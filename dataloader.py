@@ -6,7 +6,6 @@
 import os
 import numpy as np
 import xarray as xr
-from sklearn.model_selection import train_test_split
 
 ERA5_PATH = "/home/exouser/stacked_era5.npy"
 CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
@@ -16,10 +15,7 @@ TRAIN_RATIO = 0.7
 VAL_RATIO = 0.15
 
 def load_era5():
-    ds = xr.open_dataset(ERA5_PATH)
-    # stacks all variables into one array
-    data = ds.to_array().transpose("time", "variable", "latitude", "longitude")
-    return data.values  # shape: (time, channels, 57, 69)
+    return np.load(ERA5_PATH, mmap_mode="r")   # shape (720, C, 57, 69)
 
 def load_cora():
     ds = xr.open_dataset(CORA_PATH)
