@@ -9,9 +9,9 @@ OUT_FILE   = "stacked_era5.npy"
 TOTAL_HOURS = 720
 GRID_SHAPE = (57, 69)
 
-PL_RE   = re.compile(r"an\.pl.*?_(\w+)\.")      # capture var after 'an.pl_'
-SFC_RE  = re.compile(r"an\.sfc.*?_(\w+)\.")     # capture var after 'an.sfc_'
-VIN_RE  = re.compile(r"an\.vinteg.*?_(\w+)\.")  # for vertically-integrated
+PL_RE  = re.compile(r"an\.pl.*?_(\w+)\.ll")
+SFC_RE = re.compile(r"an\.sfc.*?_(\w+)\.ll")
+VIN_RE = re.compile(r"an\.vinteg.*?_(\w+)\.ll")
 
 # Get unique variable names from filenames
 def list_vars(files, regex):
@@ -20,12 +20,18 @@ def list_vars(files, regex):
 
 # Load all pressure-level files for one variable
 def load_pl_var(var):
-    """Load ALL daily pressure-level files for one variable → (time, lev, lat, lon)"""
     arrs = []
     for fname in sorted(os.listdir(ERA5_DIR)):
         if f"an.pl_{var}." in fname:
-            ds   = xr.open_dataset(os.path.join(ERA5_DIR, fname))
-            arrs.append(ds[var].values)   # shape (24, levels, 57, 69)
+            ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
+            # find the DataArray name
+            vname = next(
+                (v for v in ds.data_vars if v.lower() == var.lower()),
+                None
+            )
+            if vname is None:
+                continue      # skip if not found
+            arrs.append(ds[vname].values)      # (time, level, 57, 69)
     if not arrs:
         return None
     data = np.concatenate(arrs, axis=0)  # (720, levels, 57, 69)
