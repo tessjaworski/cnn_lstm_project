@@ -15,7 +15,7 @@ VIN_RE = re.compile(r"an\.vinteg.*?_\d+_(\w+)\.ll")
 
 # Get unique variable names from filenames
 def list_vars(files, regex):
-    return sorted({regex.search(f).group(1) for f in files if regex.search(f)})
+    return sorted({regex.search(f).group(1).upper() for f in files if regex.search(f)})
 
 
 # Load all pressure-level files for one variable
