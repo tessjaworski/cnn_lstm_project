@@ -56,5 +56,6 @@ def split_dataset(X_era5, X_cora, y):
 def load_dataset():
     era5 = load_era5()
     cora = load_cora()
+    era5 = era5[:len(cora)]
     X_era5, X_cora, y = build_sequences(era5, cora)
     return split_dataset(X_era5, X_cora, y)
