@@ -9,9 +9,9 @@ OUT_FILE   = "stacked_era5.npy"
 TOTAL_HOURS = 720
 GRID_SHAPE = (57, 69)
 
-PL_RE  = re.compile(r"an\.pl.*?_(\w+)\.ll")
-SFC_RE = re.compile(r"an\.sfc.*?_(\w+)\.ll")
-VIN_RE = re.compile(r"an\.vinteg.*?_(\w+)\.ll")
+PL_RE  = re.compile(r"an\.pl.*?_\d+_(\w+)\.ll")
+SFC_RE = re.compile(r"an\.sfc.*?_\d+_(\w+)\.ll")
+VIN_RE = re.compile(r"an\.vinteg.*?_\d+_(\w+)\.ll")
 
 # Get unique variable names from filenames
 def list_vars(files, regex):
