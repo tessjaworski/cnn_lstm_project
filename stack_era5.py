@@ -6,7 +6,7 @@ import re
 
 ERA5_DIR = "/home/exouser/era5_gulf_cropped_201501"
 OUT_FILE   = "stacked_era5.npy" 
-TOTAL_HOURS = 744
+TOTAL_HOURS = 720
 GRID_SHAPE = (57, 69)
 
 PL_RE  = re.compile(r"an\.pl.*?_\d+_(\w+)\.ll")
