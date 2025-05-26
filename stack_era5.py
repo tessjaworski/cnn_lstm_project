@@ -6,12 +6,22 @@ import re
 
 ERA5_DIR = "/home/exouser/era5_gulf_cropped_201501"
 OUT_FILE   = "stacked_era5.npy" 
-TOTAL_HOURS = 720
 GRID_SHAPE = (57, 69)
+t_ref = None   
 
 PL_RE  = re.compile(r"an\.pl.*?_\d+_(\w+)\.ll")
 SFC_RE = re.compile(r"an\.sfc.*?_\d+_(\w+)\.ll")
 VIN_RE = re.compile(r"an\.vinteg.*?_\d+_(\w+)\.ll")
+
+def accept(data, var):
+    global t_ref
+    if t_ref is None:
+        t_ref = data.shape[0]          # set once
+        print(f"[info] reference hours = {t_ref}")
+    if data.shape[0] != t_ref:
+        print(f"[skip-len] {var} has {data.shape[0]} h (expected {t_ref})")
+        return False
+    return True
 
 # Get unique variable names from filenames
 def list_vars(files, regex):
@@ -92,25 +102,23 @@ def main():
 
     # pressure-level
     for var in pl_vars:
-        data = load_pl_var(var)  # (720, lev, 57, 69)  or  (720, 57, 69)
-        if data is None:
+        data = load_pl_var(var)
+        if data is None or not accept(data, var):
             continue
-
-        if data.ndim == 3:   # (720, 57, 69)
-            data = data[:, None, :, :]   # (720, 1, 57, 69)
-
-        stacks.append(data.reshape(TOTAL_HOURS, -1, *GRID_SHAPE))
+        if data.ndim == 3:
+            data = data[:, None, :, :]
+        stacks.append(data.reshape(t_ref, -1, *GRID_SHAPE))
 
     # surface
     for var in sfc_vars:
         data = load_sfc_var(var)
-        if data is not None:
+        if data is not None and accept(data, var):
             stacks.append(data)
 
     # vertically integrated
     for var in vin_vars:
         data = load_vinteg_var(var)
-        if data is not None:
+        if data is not None and accept(data, var):
             stacks.append(data)
 
     # concatenate along channel axis
