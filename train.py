@@ -9,43 +9,42 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 from model import HybridCNNLSTM
-from dataloader import load_dataset
+from dataloader import load_dataset, SEQ_LEN
 
 device = "cpu"
 
-# this class allows pytorch to index the dataset sample by sample
-# each sample has:
-   # ERA5 input sequence (x_era5)
-   # CORA zeta input sequence (x_cora)
-   # target zeta vector (y)
+# slicing dataset
 class StormSurgeDataset(data.Dataset):
-    def __init__(self, x_era5, x_cora, y):
-        self.x_era5 = torch.from_numpy(x_era5).float()
-        self.x_cora = torch.from_numpy(x_cora).float()
-        self.y = torch.from_numpy(y).float()
+    def __init__(self, era5_mm, cora_arr, start_idx):
+        self.era5 = era5_mm     # mem-mapped numpy (720, 647, 57, 69)
+        self.cora = cora_arr    # ndarray in RAM   (720, nodes)
+        self.idxs = start_idx   # 1-D array of sequence start positions
 
     def __len__(self):
-        return len(self.x_era5)
+        return len(self.idxs)
 
     def __getitem__(self, idx):
-        return self.x_era5[idx], self.x_cora[idx], self.y[idx]
+        i = self.idxs[idx]
+        x_era5 = self.era5[i : i + SEQ_LEN]     # (T,C,H,W)
+        x_cora = self.cora[i : i + SEQ_LEN]     # (T,N)
+        y      = self.cora[i + SEQ_LEN]         # (N,)
+        return (torch.tensor(x_era5, dtype=torch.float32),
+                torch.tensor(x_cora, dtype=torch.float32),
+                torch.tensor(y,      dtype=torch.float32))
 
 # load and split dataset by calling dataloader.py
-(X_era5_train, X_cora_train, y_train,
- X_era5_val,   X_cora_val,   y_val,
- X_era5_test,  X_cora_test,  y_test) = load_dataset()
+era5_mm, cora, tr_idx, va_idx, te_idx, _ = load_dataset()
 
-#split dataset into batches
-train_dataset = StormSurgeDataset(X_era5_train, X_cora_train, y_train)
-val_dataset   = StormSurgeDataset(X_era5_val, X_cora_val, y_val)
+train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
+val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
 
-train_loader = data.DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=4)
-val_loader   = data.DataLoader(val_dataset, batch_size=4, shuffle=False, num_workers=4)
+train_loader = data.DataLoader(train_ds, batch_size=4, shuffle=True,  num_workers=2)
+val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_workers=2)
 
 # initialize the model
 model = HybridCNNLSTM(
-    era5_channels=X_era5_train.shape[2],
-    zeta_nodes=y_train.shape[1]
+    era5_channels = era5_mm.shape[1],   # 647
+    zeta_nodes = cora.shape[1]       # 585 869
 ).to(device)
 
 # loss and optimizer
