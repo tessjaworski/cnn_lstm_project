@@ -8,8 +8,8 @@ import numpy as np
 import xarray as xr
 from sklearn.model_selection import train_test_split
 
-ERA5_PATH = "path/to/era5_combined.nc"
-CORA_PATH = "path/to/cora_zeta.nc"
+ERA5_PATH = "/home/exouser/stacked_era5.npy"
+CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
 SEQ_LENGTH = 10 # past 10 hours of data as input
 PREDICT_LENGTH = 1 # predict 1 hour into the future
 TRAIN_RATIO = 0.7
