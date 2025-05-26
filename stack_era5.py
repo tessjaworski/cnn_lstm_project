@@ -17,42 +17,53 @@ VIN_RE = re.compile(r"an\.vinteg.*?_\d+_(\w+)\.ll")
 def list_vars(files, regex):
     return sorted({regex.search(f).group(1).upper() for f in files if regex.search(f)})
 
+def pick_vname(ds, var):
+    if var in ds.data_vars:                 # already UPPER
+        return var
+    low = var.lower()
+    return next((v for v in ds.data_vars if v.lower() == low), None)
+
 
 # Load all pressure-level files for one variable
 def load_pl_var(var):
+    pat = re.compile(rf"an\.pl.*?_\d+_{var.lower()}\.ll.*\.nc$", re.IGNORECASE)
     arrs = []
-    for fname in sorted(os.listdir(ERA5_DIR)):
-        if f"an.pl_{var}." in fname:
-            ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
-            # find the DataArray name
-            vname = next(
-                (v for v in ds.data_vars if v.lower() == var.lower()),
-                None
-            )
-            if vname is None:
-                continue      # skip if not found
-            arrs.append(ds[vname].values)      # (time, level, 57, 69)
+    for fname in os.listdir(ERA5_DIR):
+        if not pat.search(fname):
+            continue
+        ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
+        vname = pick_vname(ds, var)
+        if vname is None:
+            print(f"[warn] {var} not in {fname}")
+            continue
+        arrs.append(ds[vname].values)             # (24, lev, 57, 69)
     if not arrs:
         return None
-    data = np.concatenate(arrs, axis=0)  # (720, levels, 57, 69)
+    data = np.concatenate(arrs, axis=0)           # (720, lev, 57, 69)
     t, lev, *_ = data.shape
-    return data.reshape(t, lev, *GRID_SHAPE)  # keep all levels
+    return data.reshape(t, lev, *GRID_SHAPE)
 
 
 # Load one monthly surface variable 
 def load_sfc_var(var):
+    pat = re.compile(rf"an\.sfc.*?_\d+_{var.lower()}\.ll.*\.nc$", re.IGNORECASE)
     for fname in os.listdir(ERA5_DIR):
-        if f"an.sfc_{var}." in fname and fname.endswith(".nc"):
+        if pat.search(fname):
             ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
-            return ds[var].values[:, None, :, :]  # (720, 1, 57, 69)
+            vname = pick_vname(ds, var)
+            if vname:
+                return ds[vname].values[:, None, :, :]   # (720,1,57,69)
     return None
 
 # load vertically integrated variables
 def load_vinteg_var(var):
+    pat = re.compile(rf"an\.vinteg.*?_\d+_{var.lower()}\.ll.*\.nc$", re.IGNORECASE)
     for fname in os.listdir(ERA5_DIR):
-        if f"an.vinteg_{var}." in fname and fname.endswith(".nc"):
+        if pat.search(fname):
             ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
-            return ds[var].values[:, None, :, :]
+            vname = pick_vname(ds, var)
+            if vname:
+                return ds[vname].values[:, None, :, :]
     return None
 
 def main():
