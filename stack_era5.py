@@ -34,14 +34,20 @@ def load_pl_var(var):
         ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
         vname = pick_vname(ds, var)
         if vname is None:
-            print(f"[warn] {var} not in {fname}")
+            print(f"[warn] {var} missing in {fname}")
             continue
-        arrs.append(ds[vname].values)             # (24, lev, 57, 69)
+
+        vals = ds[vname].values     # (24, L, 57, 69)  *or*  (24, 57, 69)
+        if vals.ndim == 3:   # single-level field
+            vals = vals[:, None, :, :] 
+
+        arrs.append(vals)
+
     if not arrs:
         return None
-    data = np.concatenate(arrs, axis=0)           # (720, lev, 57, 69)
-    t, lev, *_ = data.shape
-    return data.reshape(t, lev, *GRID_SHAPE)
+
+    data = np.concatenate(arrs, axis=0)   # (720, L, 57, 69)
+    return data  
 
 
 # Load one monthly surface variable 
@@ -81,9 +87,14 @@ def main():
 
     # pressure-level
     for var in pl_vars:
-        data = load_pl_var(var)
-        if data is not None:
-            stacks.append(data.reshape(720, -1, *GRID_SHAPE))  # flatten levels -> channels
+        data = load_pl_var(var)  # (720, lev, 57, 69)  or  (720, 57, 69)
+        if data is None:
+            continue
+
+        if data.ndim == 3:   # (720, 57, 69)
+            data = data[:, None, :, :]   # (720, 1, 57, 69)
+
+        stacks.append(data.reshape(TOTAL_HOURS, -1, *GRID_SHAPE))
 
     # surface
     for var in sfc_vars:
