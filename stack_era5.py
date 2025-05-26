@@ -31,7 +31,12 @@ def load_pl_var(var):
     for fname in os.listdir(ERA5_DIR):
         if not pat.search(fname):
             continue
-        ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
+        fpath = os.path.join(ERA5_DIR, fname)
+        try:
+            ds = xr.open_dataset(fpath, engine="netcdf4")
+        except Exception as e:
+            print(f"[skip] {fname} – {e}")
+            continue
         vname = pick_vname(ds, var)
         if vname is None:
             print(f"[warn] {var} missing in {fname}")
