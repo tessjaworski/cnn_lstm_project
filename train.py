@@ -12,6 +12,7 @@ from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN
 
 device = "cpu"
+mask = torch.from_numpy(mask_np).to(device)
 
 # slicing dataset
 class StormSurgeDataset(data.Dataset):
@@ -43,8 +44,8 @@ val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_worker
 
 # initialize the model
 model = HybridCNNLSTM(
-    era5_channels = era5_mm.shape[1],   # 647
-    zeta_nodes = cora.shape[1]       # 585 869
+    era5_channels = era5_mm.shape[1], 
+    zeta_nodes = mask.sum().item()  
 ).to(device)
 
 # loss and optimizer
@@ -62,10 +63,17 @@ for epoch in range(epochs):
             x_cora.to(device),
             y_true.to(device)
         )
+        # replace any more nans with zeros
+        x_era5 = torch.nan_to_num(x_era5, nan=0.0)
+        x_cora = torch.nan_to_num(x_cora, nan=0.0)
+        y_true = torch.nan_to_num(y_true, nan=0.0)
+
         optimizer.zero_grad() # zero out gradients
         y_pred = model(x_era5, x_cora) # get predictions
         loss = criterion(y_pred, y_true) # compute loss
         loss.backward() # compute gradients
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
         optimizer.step() # update weights
         train_loss += loss.item()
 
@@ -78,6 +86,10 @@ for epoch in range(epochs):
                 x_cora.to(device),
                 y_true.to(device)
             )
+            x_era5 = torch.nan_to_num(x_era5, nan=0.0) 
+            x_cora = torch.nan_to_num(x_cora, nan=0.0)
+            y_true = torch.nan_to_num(y_true, nan=0.0)
+
             y_pred = model(x_era5, x_cora)
             loss = criterion(y_pred, y_true)
             val_loss += loss.item()

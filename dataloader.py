@@ -5,6 +5,10 @@
 
 import numpy as np
 import xarray as xr
+from pathlib import Path
+
+MASK_PATH = pathlib.Path("zeta_mask.npy")
+mask = np.load(MASK_PATH)   
 
 ERA5_PATH = "/home/exouser/stacked_era5.npy"
 CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
@@ -22,6 +26,8 @@ def load_cora():
         .transpose("time", "nodes")
         .values.astype(np.float32)
     )
+    zeta = zeta[:, mask]
+    zeta = np.nan_to_num(zeta, nan=0.0) # clean residual nans
     return zeta   
 
 # create sequences
@@ -52,10 +58,10 @@ def load_dataset():
     train_idx, val_idx, test_idx = make_indices(L)
 
     # return everything to train.py
-    return era5_mm, cora, train_idx, val_idx, test_idx, L
+    return era5_mm, cora, train_idx, val_idx, test_idx, mask
 
 if __name__ == "__main__":
-    era5_mm, cora, tr, va, te, L = load_dataset()
+    era5_mm, cora, tr, va, te, mask = load_dataset() 
     print("ERA-5 slice :", era5_mm.shape, era5_mm.dtype)
     print("CORA        :", cora.shape,    cora.dtype)
     print("splits      :", len(tr), len(va), len(te))
