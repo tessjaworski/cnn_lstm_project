@@ -7,7 +7,7 @@ import numpy as np
 import xarray as xr
 from pathlib import Path
 
-MASK_PATH = pathlib.Path("/home/exouser/zeta_mask.npy")
+MASK_PATH = Path("/home/exouser/zeta_mask.npy")
 mask = np.load(MASK_PATH)   
 
 ERA5_PATH = "/home/exouser/stacked_era5.npy"
