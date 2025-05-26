@@ -12,7 +12,6 @@ from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN
 
 device = "cpu"
-mask = torch.from_numpy(mask_np).to(device)
 
 # slicing dataset
 class StormSurgeDataset(data.Dataset):
@@ -34,7 +33,8 @@ class StormSurgeDataset(data.Dataset):
                 torch.tensor(y,      dtype=torch.float32))
 
 # load and split dataset by calling dataloader.py
-era5_mm, cora, tr_idx, va_idx, te_idx, _ = load_dataset()
+era5_mm, cora, tr_idx, va_idx, te_idx, mask_np = load_dataset()
+mask = torch.from_numpy(mask_np).to(device)
 
 train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
 val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
