@@ -19,34 +19,32 @@ class HybridCNNLSTM(nn.Module):
             nn.MaxPool2d(2)
         )
 
-        # Calculate CNN output size dynamically
-        with torch.no_grad():
-            dummy = torch.zeros(1, era5_channels, height, width)
-            out = self.era5_cnn(dummy)
-            self.cnn_out_size = out.view(1, -1).shape[1]
+        # compute CNN output size: 64 × (H/4) × (W/4)
+        cnn_h = height // 4
+        cnn_w = width  // 4
+        cnn_out_size = 64 * cnn_h * cnn_w
         
         #lstm block
         #processes sequence of cnn outputs across timesteps
         # learns how spatial patterns change over time
         self.era5_lstm = nn.LSTM(
-            input_size=self.cnn_out_size,
+            input_size=cnn_out_size,
             hidden_size=lstm_hidden,
             batch_first=True
         )
 
-        # compress CORA zeta sequence with FC
-        self.zeta_fc = nn.Sequential(
-            nn.Linear(zeta_nodes, 512),
-            nn.ReLU(),
-            nn.Linear(512, 256),
-            nn.ReLU()
+        # lstm block
+        self.zeta_lstm = nn.LSTM(
+            input_size=zeta_nodes,
+            hidden_size=64,
+            batch_first=True
         )
 
         # Merge both processed inputs
         self.combined_fc = nn.Sequential(
-            nn.Linear(lstm_hidden + 256, 512),
+            nn.Linear(lstm_hidden + 64, 512),
             nn.ReLU(),
-            nn.Linear(512, zeta_nodes)  # predict full zeta map
+            nn.Linear(512, zeta_nodes)
         )
 
     def forward(self, era5_seq, zeta_seq):
@@ -64,11 +62,13 @@ class HybridCNNLSTM(nn.Module):
         #grab the last timestep's output (learned summary of the whole sequence)
         era5_summary = lstm_out[:, -1, :]  # (B, lstm_hidden)
 
-        # Process zeta sequence (B, T, nodes)
-        zeta_last = zeta_seq[:, -1, :]  # (B, nodes)
-        zeta_embed = self.zeta_fc(zeta_last)  # (B, 256)
+
+       # Zeta branch
+        z, _ = self.zeta_lstm(zeta_seq)
+        zeta_feat = z[:, -1, :]    
+
 
         # Combine and predict next zeta
-        combined = torch.cat([era5_summary, zeta_embed], dim=1)
+        combined = torch.cat([era5_summary, zeta_feat], dim=1)
         out = self.combined_fc(combined)  # (B, zeta_nodes)
         return out
