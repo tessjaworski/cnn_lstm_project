@@ -64,7 +64,7 @@ class HybridCNNLSTM(nn.Module):
         #grab the last timestep's output (learned summary of the whole sequence)
         era5_summary = lstm_out[:, -1, :]  # (B, lstm_hidden)
 
-        # Process zeta sequence (B, T, nodes) → just last timestep for now
+        # Process zeta sequence (B, T, nodes)
         zeta_last = zeta_seq[:, -1, :]  # (B, nodes)
         zeta_embed = self.zeta_fc(zeta_last)  # (B, 256)
 
