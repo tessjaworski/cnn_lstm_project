@@ -11,7 +11,8 @@ import torch.utils.data as data
 from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN, PRED_LEN
 
-device = "cpu"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print("Using device:", device)
 
 # slicing dataset
 class StormSurgeDataset(data.Dataset):
