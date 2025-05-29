@@ -10,9 +10,11 @@ import torch.nn as nn
 import torch.utils.data as data
 from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN, PRED_LEN
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
+
 
 # slicing dataset
 class StormSurgeDataset(data.Dataset):
@@ -54,8 +56,24 @@ model = HybridCNNLSTM(
 criterion = nn.MSELoss() # measures average squared error between prediction and target
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4) # adapts learning rates per parameter
 
+patience = 5
+lr_reduce_patience = 3
+min_delta = 1e-4
+
+scheduler = ReduceLROnPlateau(
+    optimizer,
+    mode="min",
+    factor=0.5,
+    patience=lr_reduce_patience,
+    verbose=True,
+    min_lr=1e-6
+)
+
+best_val = float("inf") 
+epochs_no_improve = 0  
+
 # training loop
-epochs = 20
+epochs = 50
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
@@ -78,6 +96,8 @@ for epoch in range(epochs):
 
         optimizer.step() # update weights
         train_loss += loss.item()
+    
+    train_loss /= len(train_loader)         
 
     model.eval() # switch to evaluation mode
     val_loss = 0.0
@@ -95,8 +115,22 @@ for epoch in range(epochs):
             y_pred = model(x_era5, x_cora)
             loss = criterion(y_pred, y_true)
             val_loss += loss.item()
+    val_loss /= len(val_loader)       
+    print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
-    print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss/len(train_loader):.4f}, Val Loss: {val_loss/len(val_loader):.4f}")
+    scheduler.step(val_loss) # adjust LR on plateu
+
+     # early stopping logic
+    if best_val - val_loss > min_delta:
+        best_val = val_loss
+        epochs_no_improve = 0
+        torch.save(model.state_dict(), "best_model.pth")  # * save best
+    else:
+        epochs_no_improve += 1
+        if epochs_no_improve >= patience:
+            print(f"No improvement in {patience} epochs → early stopping.")
+            break
+
 
 # save model
 torch.save(model.state_dict(), "cnn_lstm_model.pth")
