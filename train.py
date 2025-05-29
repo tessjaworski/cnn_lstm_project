@@ -54,7 +54,7 @@ criterion = nn.MSELoss() # measures average squared error between prediction and
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4) # adapts learning rates per parameter
 
 # training loop
-epochs = 3 #change later
+epochs = 20
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
