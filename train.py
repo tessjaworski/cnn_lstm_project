@@ -9,7 +9,7 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 from model import HybridCNNLSTM
-from dataloader import load_dataset, SEQ_LEN
+from dataloader import load_dataset, SEQ_LEN, PRED_LEN
 
 device = "cpu"
 
@@ -27,7 +27,7 @@ class StormSurgeDataset(data.Dataset):
         i = self.idxs[idx]
         x_era5 = self.era5[i : i + SEQ_LEN]     # (T,C,H,W)
         x_cora = self.cora[i : i + SEQ_LEN]     # (T,N)
-        y      = self.cora[i + SEQ_LEN]         # (N,)
+        y      = self.cora[i + SEQ_LEN: i + SEQ_LEN + PRED_LEN] # multi step predictions
         return (torch.tensor(x_era5, dtype=torch.float32),
                 torch.tensor(x_cora, dtype=torch.float32),
                 torch.tensor(y,      dtype=torch.float32))
@@ -45,7 +45,8 @@ val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_worker
 # initialize the model
 model = HybridCNNLSTM(
     era5_channels = era5_mm.shape[1], 
-    zeta_nodes = mask.sum().item()  
+    zeta_nodes = mask.sum().item(),  
+    pred_steps = PRED_LEN
 ).to(device)
 
 # loss and optimizer
