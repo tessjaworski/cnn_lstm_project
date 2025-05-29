@@ -40,8 +40,8 @@ mask = torch.from_numpy(mask_np).to(device)
 train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
 val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
 
-train_loader = data.DataLoader(train_ds, batch_size=4, shuffle=True,  num_workers=2)
-val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_workers=2)
+train_loader = data.DataLoader(train_ds, batch_size=4, shuffle=True,  num_workers=2, pin_memory=True)
+val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_workers=2, pin_memory=True)
 
 # initialize the model
 model = HybridCNNLSTM(
