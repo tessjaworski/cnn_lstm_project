@@ -65,7 +65,6 @@ scheduler = ReduceLROnPlateau(
     mode="min",
     factor=0.5,
     patience=lr_reduce_patience,
-    verbose=True,
     min_lr=1e-6
 )
 
