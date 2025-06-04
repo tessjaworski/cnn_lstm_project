@@ -7,8 +7,8 @@ import torch
 #load CORA coordinates and return an array of coordinates
 def load_cora_coordinates(cora_nc_path, mask):
     ds = xr.open_dataset(cora_nc_path)
-    lats = ds["latitude"].values 
-    lons = ds["longitude"].values
+    lats = ds["lat"].values 
+    lons = ds["lon"].values
     coords = np.stack([lats, lons], axis=1)[mask]
     return coords
 
