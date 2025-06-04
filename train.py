@@ -8,12 +8,16 @@
 import torch
 import torch.nn as nn
 import torch.utils.data as data
+import numpy as np
 from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN, PRED_LEN
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from cora_graph import load_cora_coordinates, build_edge_index
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
+mask = np.load("/home/exouser/zeta_mask.npy")
+coords = load_cora_coordinates("/home/exouser/Jan2015_cropped.nc", mask)
 
 
 # slicing dataset
@@ -49,6 +53,8 @@ val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_worker
 model = HybridCNNLSTM(
     era5_channels = era5_mm.shape[1], 
     zeta_nodes = mask.sum().item(),  
+    coords = coords,
+    k_neighbors = 8,
     pred_steps = PRED_LEN
 ).to(device)
 

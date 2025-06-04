@@ -1,11 +1,15 @@
 import torch
 from torch import nn
+from torch_geometric.nn import GCNConv
+from cora_graph import build_edge_index, load_cora_coordinates
 
 class HybridCNNLSTM(nn.Module):
     #era5_channels is total input features
     #out_channels is just the zeta prediction
-    def __init__(self, era5_channels, zeta_nodes, pred_steps=3, height=57, width=69, lstm_hidden=128):
+    def __init__(self, era5_channels, zeta_nodes, coords, k_neighbors=8, pred_steps=3, height=57, width=69, lstm_hidden_era=128, lstm_hidden_node=128):
         super(HybridCNNLSTM, self).__init__()
+        edge_index = build_edge_index(coords, k=k_neighbors)
+        self.register_buffer("edge_index", edge_index)
 
         #cnn block
         #handles each individual map at each timestep
@@ -29,20 +33,31 @@ class HybridCNNLSTM(nn.Module):
         # learns how spatial patterns change over time
         self.era5_lstm = nn.LSTM(
             input_size=cnn_out_size,
-            hidden_size=lstm_hidden,
+            hidden_size=lstm_hidden_era,
             batch_first=True
         )
 
-        # lstm block
+        self.era5_out_dim = lstm_hidden_era
+
+        # zeta block
+        # GNN
+        self.zeta_nodes = zeta_nodes
+
+        self.gnn1 = GCNConv(in_channels=1, out_channels=32)
+        self.gnn2 = GCNConv(in_channels=32, out_channels=64)
+
+        #zeta lstm
         self.zeta_lstm = nn.LSTM(
-            input_size=zeta_nodes,
-            hidden_size=64,
+            input_size=64, #gnn 64 dim node vectors
+            hidden_size=lstm_hidden_node,
             batch_first=True
         )
+        self.node_out_dim = lstm_hidden_node
         self.pred_steps = pred_steps
+        merged_dim = self.era5_out_dim + self.node_out_dim
         # Merge both processed inputs
         self.combined_fc = nn.Sequential(
-            nn.Linear(lstm_hidden + 64, 512),
+            nn.Linear(merged_dim, 512),
             nn.ReLU(),
             nn.Linear(512, zeta_nodes * pred_steps)
         )
@@ -64,12 +79,33 @@ class HybridCNNLSTM(nn.Module):
 
 
        # Zeta branch
-        z, _ = self.zeta_lstm(zeta_seq)
-        zeta_feat = z[:, -1, :]    
+       # gnn
+        all_node_embeddings = []
+        for t in range(T):
+            z_t = zeta_seq[:, t, :]  
+            flat_feats = z_t.reshape(B * zeta_seq.size(-1), 1)
+            edge_index_batch = self.edge_index.repeat(1, B)
+            batch_offsets = (
+                torch.arange(B, device=z_t.device).unsqueeze(1)
+                * zeta_seq.size(-1)
+            )
+            edge_index_batch = edge_index_batch + batch_offsets.repeat(1, edge_index_batch.size(1) // B).flatten()
+            h = self.gnn1(flat_feats, edge_index_batch)
+            h = torch.relu(h)
+            h = self.gnn2(h, edge_index_batch)
+            h = torch.relu(h)
+            h = h.view(B, zeta_seq.size(-1), -1)
+            node_summary = h.mean(dim=1) 
+            all_node_embeddings.append(node_summary)
+
+        #lstm
+        zeta_over_time = torch.stack(all_node_embeddings, dim=1)
+        z_lstm_out, _ = self.zeta_lstm(zeta_over_time) 
+        zeta_summary = z_lstm_out[:, -1, :]  
 
 
         # Combine and predict next zeta
-        combined = torch.cat([era5_summary, zeta_feat], dim=1)
+        combined = torch.cat([era5_summary, zeta_summary], dim=1)
         out = self.combined_fc(combined)  # (B, zeta_nodes)
         out = out.view(B, self.pred_steps, -1) #reshape
         return out
