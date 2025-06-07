@@ -1,4 +1,8 @@
 import torch
+import math
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import r2_score
 import torch.nn as nn
 import torch.utils.data as data
 from model import HybridCNNLSTM
@@ -48,6 +52,7 @@ model.eval()
 criterion = nn.MSELoss()
 mse_total, mae_total = 0.0, 0.0
 
+preds, trues = [], []
 with torch.no_grad():
     for x_era5, x_cora, y_true in test_loader:
         x_era5, x_cora, y_true = (
@@ -60,10 +65,26 @@ with torch.no_grad():
         y_true = torch.nan_to_num(y_true, nan=0.0)
 
         y_pred = model(x_era5, x_cora)
+        preds.append(y_pred.cpu().numpy().ravel())
+        trues.append(y_true.cpu().numpy().ravel())
         mse = criterion(y_pred, y_true)
         mae  = torch.mean(torch.abs(y_pred - y_true))
         mse_total += mse.item()
         mae_total += mae.item()
 
+flat_pred = np.concatenate(preds)
+flat_true = np.concatenate(trues)
+
 print(f"Test MSE: {mse_total / len(test_loader):.4f}")
 print(f"Test MAE: {mae_total / len(test_loader):.4f}")
+
+plt.figure(figsize=(6,6))
+plt.scatter(flat_true, flat_pred, s=1, alpha=0.3)
+lims = [flat_true.min(), flat_true.max()]
+plt.plot(lims, lims, 'k--', lw=1)
+plt.xlabel("True ζ")
+plt.ylabel("Predicted ζ")
+plt.title("ζ: predicted vs true")
+plt.tight_layout()
+plt.savefig("scatter_zeta_test.png", dpi=150)
+print("R²:", r2_score(flat_true, flat_pred))
