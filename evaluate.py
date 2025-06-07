@@ -38,7 +38,7 @@ model = HybridCNNLSTM(
     pred_steps = PRED_LEN
 ).to(device)
 
-model.load_state_dict(torch.load("cnn_lstm_model.pth", map_location=device))
+model.load_state_dict(torch.load("/home/exouser/cnn_lstm_project/best_model.pth", map_location=device))
 model.eval()
 
 criterion = nn.MSELoss()
