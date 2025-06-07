@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 from model import HybridCNNLSTM
-from dataloader import load_dataset, SEQ_LEN
+from dataloader import load_dataset, SEQ_LEN, PRED_LEN
 
 # load data
 
@@ -23,7 +23,7 @@ class StormSurgeDataset(torch.utils.data.Dataset):
         i = self.idxs[idx]
         x_era5 = self.era5[i : i + SEQ_LEN]     # (T,C,H,W)
         x_cora = self.cora[i : i + SEQ_LEN]     # (T,WetNodes)
-        y      = self.cora[i + SEQ_LEN]         # (WetNodes,)
+        y      = self.cora[i + SEQ_LEN : i + SEQ_LEN + PRED_LEN]         # (WetNodes,)
         return (torch.tensor(x_era5, dtype=torch.float32),
                 torch.tensor(x_cora, dtype=torch.float32),
                 torch.tensor(y,      dtype=torch.float32))
@@ -34,7 +34,8 @@ test_loader = data.DataLoader(test_ds, batch_size=4, shuffle=False, num_workers=
 # load model
 model = HybridCNNLSTM(
     era5_channels=era5_mm.shape[1],
-    zeta_nodes=mask.sum().item()
+    zeta_nodes=mask.sum().item(),
+    pred_steps = PRED_LEN
 ).to(device)
 
 model.load_state_dict(torch.load("cnn_lstm_model.pth", map_location=device))
@@ -56,7 +57,7 @@ with torch.no_grad():
 
         y_pred = model(x_era5, x_cora)
         mse = criterion(y_pred, y_true)
-        mae = torch.mean(torch.abs(y_pred - y_true))
+        mae  = torch.mean(torch.abs(y_pred - y_true))
         mse_total += mse.item()
         mae_total += mae.item()
 
