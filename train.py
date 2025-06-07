@@ -46,8 +46,8 @@ mask = torch.from_numpy(mask_np).to(device)
 train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
 val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
 
-train_loader = data.DataLoader(train_ds, batch_size=2, shuffle=True,  num_workers=2, pin_memory=True)
-val_loader   = data.DataLoader(val_ds,   batch_size=2, shuffle=False, num_workers=2, pin_memory=True)
+train_loader = data.DataLoader(train_ds, batch_size=8, shuffle=True,  num_workers=2, pin_memory=True)
+val_loader   = data.DataLoader(val_ds,   batch_size=8, shuffle=False, num_workers=2, pin_memory=True)
 
 # initialize the model
 model = HybridCNNLSTM(
@@ -60,11 +60,11 @@ model = HybridCNNLSTM(
 
 # loss and optimizer
 criterion = nn.MSELoss() # measures average squared error between prediction and target
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-3) # adapts learning rates per parameter
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, weight_decay=1e-5) # adapts learning rates per parameter
 
 patience = 7
-lr_reduce_patience = 3
-min_delta = 1e-4
+lr_reduce_patience = 5
+min_delta = 1e-3
 
 scheduler = ReduceLROnPlateau(
     optimizer,

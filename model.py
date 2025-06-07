@@ -6,7 +6,7 @@ from cora_graph import build_edge_index, load_cora_coordinates
 class HybridCNNLSTM(nn.Module):
     #era5_channels is total input features
     #out_channels is just the zeta prediction
-    def __init__(self, era5_channels, zeta_nodes, coords, k_neighbors=8, pred_steps=24, height=57, width=69, lstm_hidden_era=64, lstm_hidden_node=64):
+    def __init__(self, era5_channels, zeta_nodes, coords, k_neighbors=8, pred_steps=24, height=57, width=69, lstm_hidden_era=128, lstm_hidden_node=128):
         super(HybridCNNLSTM, self).__init__()
         edge_index = build_edge_index(coords, k=k_neighbors)
         self.register_buffer("edge_index", edge_index)
