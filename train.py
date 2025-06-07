@@ -78,7 +78,7 @@ best_val = float("inf")
 epochs_no_improve = 0  
 
 # training loop
-epochs = 50
+epochs = 10
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
