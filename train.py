@@ -78,7 +78,7 @@ best_val = float("inf")
 epochs_no_improve = 0  
 
 # training loop
-epochs = 10
+epochs = 30
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
@@ -124,6 +124,7 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
     scheduler.step(val_loss) # adjust LR on plateu
+    print(f"* LR after epoch {epoch+1}: {optimizer.param_groups[0]['lr']:.2e}")
 
      # early stopping logic
     if best_val - val_loss > min_delta:
