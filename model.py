@@ -59,6 +59,7 @@ class HybridCNNLSTM(nn.Module):
         self.combined_fc = nn.Sequential(
             nn.Linear(merged_dim, 512),
             nn.ReLU(),
+            nn.Dropout(0.3),
             nn.Linear(512, zeta_nodes * pred_steps)
         )
 
