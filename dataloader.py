@@ -13,7 +13,7 @@ mask = np.load(MASK_PATH)
 ERA5_PATH = "/home/exouser/stacked_era5.npy"
 CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
 SEQ_LEN = 10 # past 10 hours of data as input
-PRED_LEN = 24 # predict 24 hours into the future
+PRED_LEN = 3 # predict 3 hours into the future
 TRAIN_FR = 0.7
 VAL_FR = 0.15
 
