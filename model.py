@@ -43,8 +43,8 @@ class HybridCNNLSTM(nn.Module):
         # GNN
         self.zeta_nodes = zeta_nodes
 
-        self.gnn1 = GCNConv(in_channels=1, out_channels=32)
-        self.gnn2 = GCNConv(in_channels=32, out_channels=64)
+        #self.gnn1 = GCNConv(in_channels=1, out_channels=32)
+        #self.gnn2 = GCNConv(in_channels=32, out_channels=64)
 
         #zeta lstm
         self.zeta_lstm = nn.LSTM(
@@ -81,28 +81,32 @@ class HybridCNNLSTM(nn.Module):
 
        # Zeta branch
        # gnn
-        all_node_embeddings = []
-        for t in range(T):
-            z_t = zeta_seq[:, t, :]  
-            flat_feats = z_t.reshape(B * zeta_seq.size(-1), 1)
-            edge_index_batch = self.edge_index.repeat(1, B)
-            batch_offsets = (
-                torch.arange(B, device=z_t.device).unsqueeze(1)
-                * zeta_seq.size(-1)
-            )
-            edge_index_batch = edge_index_batch + batch_offsets.repeat(1, edge_index_batch.size(1) // B).flatten()
-            h = self.gnn1(flat_feats, edge_index_batch)
-            h = torch.relu(h)
-            h = self.gnn2(h, edge_index_batch)
-            h = torch.relu(h)
-            h = h.view(B, zeta_seq.size(-1), -1)
-            node_summary = h.mean(dim=1) 
-            all_node_embeddings.append(node_summary)
+        #all_node_embeddings = []
+        #for t in range(T):
+        #    z_t = zeta_seq[:, t, :]  
+        #    flat_feats = z_t.reshape(B * zeta_seq.size(-1), 1)
+        #    edge_index_batch = self.edge_index.repeat(1, B)
+        #    batch_offsets = (
+        #        torch.arange(B, device=z_t.device).unsqueeze(1)
+        #        * zeta_seq.size(-1)
+         #   )
+        #    edge_index_batch = edge_index_batch + batch_offsets.repeat(1, edge_index_batch.size(1) // B).flatten()
+        #    h = self.gnn1(flat_feats, edge_index_batch)
+         #   h = torch.relu(h)
+         #   h = self.gnn2(h, edge_index_batch)
+         #   h = torch.relu(h)
+         #   h = h.view(B, zeta_seq.size(-1), -1)
+          #  node_summary = h.mean(dim=1) 
+          #  all_node_embeddings.append(node_summary)
 
         #lstm
-        zeta_over_time = torch.stack(all_node_embeddings, dim=1)
-        z_lstm_out, _ = self.zeta_lstm(zeta_over_time) 
-        zeta_summary = z_lstm_out[:, -1, :]  
+        #zeta_over_time = torch.stack(all_node_embeddings, dim=1)
+        #z_lstm_out, _ = self.zeta_lstm(zeta_over_time) 
+        #zeta_summary = z_lstm_out[:, -1, :]  
+
+        #tesing:
+        z_lstm_out, (h_n, _) = self.zeta_lstm(zeta_seq)
+        zeta_summary = h_n[-1]
 
 
         # Combine and predict next zeta

@@ -53,8 +53,8 @@ val_loader   = data.DataLoader(val_ds,   batch_size=8, shuffle=False, num_worker
 model = HybridCNNLSTM(
     era5_channels = era5_mm.shape[1], 
     zeta_nodes = mask.sum().item(),  
-    coords = coords,
-    k_neighbors = 8,
+    #coords = coords,
+    #k_neighbors = 8,
     pred_steps = PRED_LEN
 ).to(device)
 
