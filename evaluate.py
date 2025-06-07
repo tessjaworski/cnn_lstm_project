@@ -12,7 +12,12 @@ from cora_graph import load_cora_coordinates
 # load data
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-era5_mm, cora, _, _, test_idx, mask_np = load_dataset()
+era5_mm, cora, tr_idx, va_idx, test_idx, mask_np = load_dataset()
+y0 = cora[test_idx]
+yN = cora[test_idx + PRED_LEN]
+persist_mse = np.mean((yN - y0)**2)
+print(f"{PRED_LEN}-h persistence MSE: {persist_mse:.4f}")
+
 mask  = torch.from_numpy(mask_np).to(device)
 coords = load_cora_coordinates("/home/exouser/Jan2015_cropped.nc", mask_np)
 
