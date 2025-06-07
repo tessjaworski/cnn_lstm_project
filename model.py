@@ -48,7 +48,7 @@ class HybridCNNLSTM(nn.Module):
 
         #zeta lstm
         self.zeta_lstm = nn.LSTM(
-            input_size=64, #gnn 64 dim node vectors
+            input_size=zeta_nodes,
             hidden_size=lstm_hidden_node,
             batch_first=True
         )
