@@ -60,11 +60,11 @@ model = HybridCNNLSTM(
 
 # loss and optimizer
 criterion = nn.MSELoss() # measures average squared error between prediction and target
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4) # adapts learning rates per parameter
+optimizer = torch.optim.Adam(model.parameters(), lr=5e-4, weight_decay=1e-4) # adapts learning rates per parameter
 
-patience = 10
-lr_reduce_patience = 5
-min_delta = 1e-3
+patience = 7
+lr_reduce_patience = 3
+min_delta = 1e-4
 
 scheduler = ReduceLROnPlateau(
     optimizer,
