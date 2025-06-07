@@ -57,6 +57,21 @@ def load_dataset():
     #  build split indices
     train_idx, val_idx, test_idx = make_indices(L)
 
+    #normalize
+    # era5: channel‐wise mean/std over (time, h, w)
+    e5_train = era5_mm[train_idx]
+    μ_era5   = e5_train.mean(axis=(0,2,3), keepdims=True)
+    σ_era5   = e5_train.std (axis=(0,2,3), keepdims=True)
+
+    # cora: node‐wise mean/std over time
+    c_train  = cora[train_idx]
+    μ_cora   = c_train.mean(axis=0, keepdims=True)
+    σ_cora   = c_train.std (axis=0, keepdims=True)
+
+    #apply normalization to all splits
+    era5_mm = (era5_mm - μ_era5) / (σ_era5 + 1e-6)
+    cora    = (cora    - μ_cora) / (σ_cora  + 1e-6)
+
     # return everything to train.py
     return era5_mm, cora, train_idx, val_idx, test_idx, mask
 
@@ -65,3 +80,14 @@ if __name__ == "__main__":
     print("ERA-5 slice :", era5_mm.shape, era5_mm.dtype)
     print("CORA        :", cora.shape,    cora.dtype)
     print("splits      :", len(tr), len(va), len(te))
+
+    μ_era5 = era5_mm[tr].mean(axis=(0,2,3))
+    σ_era5 = era5_mm[tr].std (axis=(0,2,3))
+    μ_cora = cora[tr].mean(axis=0)
+    σ_cora = cora[tr].std (axis=0)
+
+    print("ERA5 train mean (first 5):", μ_era5.flatten()[:5], "… std (first 5):", σ_era5.flatten()[:5])  # *
+    print("ERA5 overall mean after norm:", float(era5_mm.mean()), "std:", float(era5_mm.std()))          # *
+
+    print("CORA train mean (first 5):", μ_cora[:5], "… std (first 5):", σ_cora[:5])                    # *
+    print("CORA overall mean after norm:", float(cora.mean()), "std:", float(cora.std()))                # *
