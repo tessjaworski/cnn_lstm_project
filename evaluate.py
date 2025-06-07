@@ -3,12 +3,14 @@ import torch.nn as nn
 import torch.utils.data as data
 from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN, PRED_LEN
+from cora_graph import load_cora_coordinates
 
 # load data
 
-device = "cpu"
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 era5_mm, cora, _, _, test_idx, mask_np = load_dataset()
 mask  = torch.from_numpy(mask_np).to(device)
+coords = load_cora_coordinates("/home/exouser/Jan2015_cropped.nc", mask_np)
 
 class StormSurgeDataset(torch.utils.data.Dataset):
     def __init__(self, era5_mm, cora_arr, start_idx):
@@ -35,6 +37,8 @@ test_loader = data.DataLoader(test_ds, batch_size=4, shuffle=False, num_workers=
 model = HybridCNNLSTM(
     era5_channels=era5_mm.shape[1],
     zeta_nodes=mask.sum().item(),
+    coords = coords,
+    k_neighbors = 8,
     pred_steps = PRED_LEN
 ).to(device)
 
