@@ -58,7 +58,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-4) # adapts learning rate
 
 patience = 5
 lr_reduce_patience = 3
-min_delta = 1e-4
+min_delta = 1e-3
 
 scheduler = ReduceLROnPlateau(
     optimizer,
@@ -72,7 +72,7 @@ best_val = float("inf")
 epochs_no_improve = 0  
 
 # training loop
-epochs = 50
+epochs = 20
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
@@ -123,7 +123,7 @@ for epoch in range(epochs):
     if best_val - val_loss > min_delta:
         best_val = val_loss
         epochs_no_improve = 0
-        torch.save(model.state_dict(), "best_model.pth")  # * save best
+        torch.save(model.state_dict(), "best_model_6h.pth")  # * save best
     else:
         epochs_no_improve += 1
         if epochs_no_improve >= patience:
@@ -132,4 +132,4 @@ for epoch in range(epochs):
 
 
 # save model
-torch.save(model.state_dict(), "cnn_lstm_model.pth")
+torch.save(model.state_dict(), "best_model_6h.pth")
