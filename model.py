@@ -4,7 +4,7 @@ from torch import nn
 class HybridCNNLSTM(nn.Module):
     #era5_channels is total input features
     #out_channels is just the zeta prediction
-    def __init__(self, era5_channels, zeta_nodes, pred_steps=3, height=57, width=69, lstm_hidden=128):
+    def __init__(self, era5_channels, zeta_nodes, pred_steps=3, height=57, width=69, lstm_hidden=256):
         super(HybridCNNLSTM, self).__init__()
 
         #cnn block
