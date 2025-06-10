@@ -4,7 +4,7 @@ from torch import nn
 class HybridCNNLSTM(nn.Module):
     #era5_channels is total input features
     #out_channels is just the zeta prediction
-    def __init__(self, era5_channels, zeta_nodes, pred_steps=3, height=57, width=69, lstm_hidden=256):
+    def __init__(self, era5_channels, zeta_nodes, pred_steps=3, height=57, width=69, lstm_hidden=256, proj_size=64):
         super(HybridCNNLSTM, self).__init__()
 
         #cnn block
@@ -32,17 +32,22 @@ class HybridCNNLSTM(nn.Module):
             hidden_size=lstm_hidden,
             batch_first=True
         )
+        #project raw 100-d nodes  to 64-d
+        self.zeta_proj = nn.Sequential(
+        nn.Linear(zeta_nodes, proj_size),
+        nn.ReLU()
+    )
 
         # lstm block
         self.zeta_lstm = nn.LSTM(
-            input_size=zeta_nodes,
+            input_size=proj_size,
             hidden_size=64,
             batch_first=True
         )
         self.pred_steps = pred_steps
         # Merge both processed inputs
         self.combined_fc = nn.Sequential(
-            nn.Linear(lstm_hidden + 64, 512),
+            nn.Linear(lstm_hidden * 2, 512),
             nn.Dropout(0.1),
             nn.ReLU(),
             nn.Linear(512, zeta_nodes * pred_steps)
@@ -65,8 +70,9 @@ class HybridCNNLSTM(nn.Module):
 
 
        # Zeta branch
-        z, _ = self.zeta_lstm(zeta_seq)
-        zeta_feat = z[:, -1, :]    
+        z_p = self.zeta_proj(zeta_seq)
+        _, (h_n, _) = self.zeta_lstm(z_p)
+        zeta_feat = h_n[-1]    
 
 
         # Combine and predict next zeta
