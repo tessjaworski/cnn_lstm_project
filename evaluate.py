@@ -10,14 +10,14 @@ from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN, PRED_LEN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-era5_mm, cora, _, _, test_idx, mask_np = load_dataset()
-mask = torch.from_numpy(mask_np).to(device)
+era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask = load_dataset()
+mask = torch.from_numpy(mask).to(device)
 
 # persistence baseline (3-hour forecast)
-y0 = cora[test_idx]
-yN = cora[test_idx + PRED_LEN]
-persistence_mse = np.mean((yN - y0) ** 2)
-print(f"{PRED_LEN}-h persistence MSE: {persistence_mse:.4f}")
+y0 = cora_norm[test_idx]
+yN = cora_norm[test_idx + PRED_LEN]
+persist_mse = np.mean((yN - y0) ** 2)
+print(f"{PRED_LEN}-h persistence MSE (norm): {persist_mse:.4f}")
 
 class StormSurgeDataset(data.Dataset):
     def __init__(self, era5, cora, idxs):
@@ -35,7 +35,7 @@ class StormSurgeDataset(data.Dataset):
             torch.tensor(y,  dtype=torch.float32),
         )
 
-test_ds     = StormSurgeDataset(era5_mm, cora, test_idx)
+test_ds     = StormSurgeDataset(era5_mm, cora_norm, test_idx)
 test_loader = data.DataLoader(test_ds, batch_size=4, shuffle=False, num_workers=2)
 
 model = HybridCNNLSTM(
@@ -67,7 +67,7 @@ print(f"Test MAE: {mae_total / n:.4f}")
 
 flat_pred = np.concatenate(all_pred)
 flat_true = np.concatenate(all_true)
-print("R²:", r2_score(flat_true, flat_pred))
+print("R² (norm):", r2_score(flat_true, flat_pred))
 
 plt.figure(figsize=(6,6))
 plt.scatter(flat_true, flat_pred, s=1, alpha=0.3)
@@ -78,4 +78,4 @@ plt.ylabel("Predicted ζ")
 plt.title("Predicted vs. True ζ for 3 hr Prediction")
 plt.tight_layout()
 plt.savefig("3hr_normalized_scatter_zeta_test.png", dpi=150)
-print("Saved 3hr_scatter_zeta_test.png")
+print("Saved 3hr_normalized_scatter_zeta_test.png")
