@@ -43,6 +43,7 @@ class HybridCNNLSTM(nn.Module):
         # Merge both processed inputs
         self.combined_fc = nn.Sequential(
             nn.Linear(lstm_hidden + 64, 512),
+            nn.Dropout(0.1),
             nn.ReLU(),
             nn.Linear(512, zeta_nodes * pred_steps)
         )
