@@ -36,7 +36,7 @@ class HybridCNNLSTM(nn.Module):
         # lstm block
         self.zeta_lstm = nn.LSTM(
             input_size=zeta_nodes,
-            hidden_size=64,
+            hidden_size=lstm_hidden,
             batch_first=True
         )
         self.pred_steps = pred_steps
