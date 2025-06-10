@@ -8,16 +8,12 @@
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-import numpy as np
 from model import HybridCNNLSTM
 from dataloader import load_dataset, SEQ_LEN, PRED_LEN
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from cora_graph import load_cora_coordinates, build_edge_index
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print("Using device:", device)
-mask = np.load("/home/exouser/zeta_mask.npy")
-coords = load_cora_coordinates("/home/exouser/Jan2015_cropped.nc", mask)
 
 
 # slicing dataset
@@ -46,25 +42,23 @@ mask = torch.from_numpy(mask_np).to(device)
 train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
 val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
 
-train_loader = data.DataLoader(train_ds, batch_size=8, shuffle=True,  num_workers=2, pin_memory=True)
-val_loader   = data.DataLoader(val_ds,   batch_size=8, shuffle=False, num_workers=2, pin_memory=True)
+train_loader = data.DataLoader(train_ds, batch_size=4, shuffle=True,  num_workers=2, pin_memory=True)
+val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_workers=2, pin_memory=True)
 
 # initialize the model
 model = HybridCNNLSTM(
     era5_channels = era5_mm.shape[1], 
     zeta_nodes = mask.sum().item(),  
-    #coords = coords,
-    #k_neighbors = 8,
     pred_steps = PRED_LEN
 ).to(device)
 
 # loss and optimizer
 criterion = nn.MSELoss() # measures average squared error between prediction and target
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-5, weight_decay=1e-5) # adapts learning rates per parameter
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4) # adapts learning rates per parameter
 
-patience = 7
-lr_reduce_patience = 5
-min_delta = 1e-3
+patience = 5
+lr_reduce_patience = 3
+min_delta = 1e-4
 
 scheduler = ReduceLROnPlateau(
     optimizer,
@@ -78,7 +72,7 @@ best_val = float("inf")
 epochs_no_improve = 0  
 
 # training loop
-epochs = 30
+epochs = 50
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
@@ -124,7 +118,6 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
 
     scheduler.step(val_loss) # adjust LR on plateu
-    print(f"* LR after epoch {epoch+1}: {optimizer.param_groups[0]['lr']:.2e}")
 
      # early stopping logic
     if best_val - val_loss > min_delta:
