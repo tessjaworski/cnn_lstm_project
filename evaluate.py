@@ -43,7 +43,7 @@ model = HybridCNNLSTM(
     zeta_nodes=int(mask.sum()),
     pred_steps=PRED_LEN
 ).to(device)
-model.load_state_dict(torch.load("cnn_lstm_model.pth", map_location=device))
+model.load_state_dict(torch.load("best_model_6h", map_location=device))
 model.eval()
 
 criterion = nn.MSELoss()
