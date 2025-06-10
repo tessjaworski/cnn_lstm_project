@@ -13,7 +13,7 @@ mask = np.load(MASK_PATH)
 ERA5_PATH = "/home/exouser/stacked_era5.npy"
 CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
 SEQ_LEN = 10 # past 10 hours of data as input
-PRED_LEN = 6 # predict 6 hour into the future
+PRED_LEN = 3 # predict 6 hour into the future
 TRAIN_FR = 0.7
 VAL_FR = 0.15
 
@@ -56,6 +56,16 @@ def load_dataset():
 
     #  build split indices
     train_idx, val_idx, test_idx = make_indices(L)
+
+    #normalization
+    e5_train = era5_mm[train_idx]          # shape: (n_train, C, H, W)
+    μ_era5   = e5_train.mean(axis=(0,2,3), keepdims=True)
+    σ_era5   = e5_train.std (axis=(0,2,3), keepdims=True)
+    c_train  = cora[train_idx]             # shape: (n_train, N)
+    μ_cora   = c_train.mean(axis=0, keepdims=True)
+    σ_cora   = c_train.std (axis=0, keepdims=True)
+    era5_mm = (era5_mm - μ_era5) / (σ_era5 + 1e-6)
+    cora    = (cora    - μ_cora) / (σ_cora  + 1e-6)
 
     # return everything to train.py
     return era5_mm, cora, train_idx, val_idx, test_idx, mask
