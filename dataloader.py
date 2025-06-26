@@ -15,7 +15,7 @@ mask = np.load(MASK_PATH)
 ERA5_PATH = "/home/exouser/stacked_era5.npy"
 CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
 SEQ_LEN = 10 # past 10 hours of data as input
-PRED_LEN = 24 # predict 24 hour into the future
+PRED_LEN = 12 # predict 12 hour into the future
 TRAIN_FR = 0.7
 VAL_FR = 0.15
 
@@ -32,7 +32,7 @@ class CORADataset(Dataset):
     def __getitem__(self, idx):
         return self.X[idx], self.Y[idx]
     
-    
+
 def load_era5():
     return np.load(ERA5_PATH, mmap_mode="r")   # shape (744, C, 57, 69)
 

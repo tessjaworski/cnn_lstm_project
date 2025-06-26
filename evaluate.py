@@ -48,7 +48,7 @@ model = GCNHybrid(
     lstm_hidden   = 128,
     pred_steps    = PRED_LEN,
 ).to(device)
-model.load_state_dict(torch.load("best_model_24h_normalized.pth", map_location=device))
+model.load_state_dict(torch.load("gnn_model_12h_normalized.pth", map_location=device))
 model.eval()
 
 criterion = nn.MSELoss()
@@ -86,7 +86,7 @@ lims = [flat_true.min(), flat_true.max()]
 plt.plot(lims, lims, 'k--', lw=1)
 plt.xlabel("True ζ")
 plt.ylabel("Predicted ζ")
-plt.title("Predicted vs. True ζ for 24 hr Prediction")
+plt.title("Predicted vs. True ζ for 12 hr Prediction")
 plt.tight_layout()
-plt.savefig("24hr_normalized_scatter_zeta_test.png", dpi=150)
-print("Saved 24hr_normalized_scatter_zeta_test.png")
+plt.savefig("12hr_gnn_normalized_scatter_zeta_test.png", dpi=150)
+print("Saved 12hr_gnn_normalized_scatter_zeta_test.png")
