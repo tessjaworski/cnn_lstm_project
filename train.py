@@ -9,7 +9,8 @@ import torch
 import torch.nn as nn
 import torch.utils.data as data
 from model import GCNHybrid
-from dataloader import load_dataset, load_cora_coordinates, build_edge_index, CORA_PATH, SEQ_LEN, PRED_LEN
+from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
+from cora_graph      import load_cora_coordinates, build_edge_index
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
