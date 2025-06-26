@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
 from model import CNN_GNN_Hybrid
-from dataloader import load_dataset, load_cora_coordinates, build_edge_index, CORA_PATH, SEQ_LEN, PRED_LEN
+from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
+from cora_graph      import load_cora_coordinates, build_edge_index
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask_np = load_dataset()
