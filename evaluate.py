@@ -6,12 +6,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
-from model import HybridCNNLSTM
-from dataloader import load_dataset, SEQ_LEN, PRED_LEN
+from model import GCNHybrid
+from dataloader import load_dataset, load_cora_coordinates, build_edge_index, CORA_PATH, SEQ_LEN, PRED_LEN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask = load_dataset()
-mask = torch.from_numpy(mask).to(device)
+era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask_np = load_dataset()
+mask = torch.from_numpy(mask_np).to(device)
+
+coords     = load_cora_coordinates(CORA_PATH, mask_np)
+edge_index = build_edge_index(coords, k=8).to(device)
 
 # persistence baseline (3-hour forecast)
 y0 = cora_norm[test_idx]
@@ -38,10 +41,12 @@ class StormSurgeDataset(data.Dataset):
 test_ds     = StormSurgeDataset(era5_mm, cora_norm, test_idx)
 test_loader = data.DataLoader(test_ds, batch_size=4, shuffle=False, num_workers=2)
 
-model = HybridCNNLSTM(
-    era5_channels=era5_mm.shape[1],
-    zeta_nodes=int(mask.sum()),
-    pred_steps=PRED_LEN
+num_era5_feats = era5_mm.shape[1]
+model = GCNHybrid(
+    era5_channels = num_era5_feats,
+    gcn_hidden    = 64,
+    lstm_hidden   = 128,
+    pred_steps    = PRED_LEN,
 ).to(device)
 model.load_state_dict(torch.load("best_model_24h_normalized.pth", map_location=device))
 model.eval()
@@ -55,7 +60,13 @@ with torch.no_grad():
     for x5, xz, y_true in test_loader:
         x5, xz, y_true = x5.to(device), xz.to(device), y_true.to(device)
         x5 = torch.nan_to_num(x5); xz = torch.nan_to_num(xz); y_true = torch.nan_to_num(y_true)
-        y_pred = model(x5, xz)
+
+        B, T, C, H, W = x5.shape
+        flat       = x5.view(B, T, C, H*W)         
+        node_feats = flat[..., mask]                 
+        era5_seq   = node_feats.permute(0, 1, 3, 2)   
+
+        y_pred = model(era5_seq, xz, edge_index)
         mse_total += criterion(y_pred, y_true).item()
         mae_total += torch.mean(torch.abs(y_pred - y_true)).item()
         all_pred.append(y_pred.cpu().numpy().ravel())

@@ -8,8 +8,8 @@
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-from model import HybridCNNLSTM
-from dataloader import load_dataset, SEQ_LEN, PRED_LEN
+from model import GCNHybrid
+from dataloader import load_dataset, load_cora_coordinates, build_edge_index, CORA_PATH, SEQ_LEN, PRED_LEN
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,17 +39,24 @@ class StormSurgeDataset(data.Dataset):
 era5_mm, cora, tr_idx, va_idx, te_idx, mask_np = load_dataset()
 mask = torch.from_numpy(mask_np).to(device)
 
+# Build kNN graph over your CORA node coordinates
+coords     = load_cora_coordinates(CORA_PATH, mask_np)     
+edge_index = build_edge_index(coords, k=8).to(device)       
+
+
 train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
 val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
 
 train_loader = data.DataLoader(train_ds, batch_size=4, shuffle=True,  num_workers=2, pin_memory=True)
 val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_workers=2, pin_memory=True)
 
+num_era5_feats = era5_mm.shape[1]
 # initialize the model
-model = HybridCNNLSTM(
-    era5_channels = era5_mm.shape[1], 
-    zeta_nodes = mask.sum().item(),  
-    pred_steps = PRED_LEN
+model = GCNHybrid(
+    era5_channels = num_era5_feats,      # number of ERA5 variables per node
+    gcn_hidden    = 64,
+    lstm_hidden   = 128,
+    pred_steps    = PRED_LEN
 ).to(device)
 
 # loss and optimizer
@@ -76,46 +83,55 @@ epochs = 20
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
-    for x_era5, x_cora, y_true in train_loader:
-        x_era5, x_cora, y_true = (
-            x_era5.to(device),
-            x_cora.to(device),
-            y_true.to(device)
-        )
-        # replace any more nans with zeros
-        x_era5 = torch.nan_to_num(x_era5, nan=0.0)
-        x_cora = torch.nan_to_num(x_cora, nan=0.0)
-        y_true = torch.nan_to_num(y_true, nan=0.0)
+    for x_era5, zeta_past, y_true in train_loader:
+        # x_era5: [B, SEQ_LEN, C, H, W]
+        # zeta_past: [B, SEQ_LEN, N]
+        # y_true: [B, PRED_LEN, N]
+        x_era5    = torch.nan_to_num(x_era5,   nan=0.0).to(device)
+        zeta_past = torch.nan_to_num(zeta_past,nan=0.0).to(device)
+        y_true    = torch.nan_to_num(y_true,   nan=0.0).to(device)
 
-        optimizer.zero_grad() # zero out gradients
-        y_pred = model(x_era5, x_cora) # get predictions
-        loss = criterion(y_pred, y_true) # compute loss
-        loss.backward() # compute gradients
+        B, T, C, H, W = x_era5.shape
+        # flatten spatial dims, then mask to node locations
+        flat       = x_era5.view(B, T, C, H*W)        # [B, T, C, H*W]
+        node_feats = flat[..., mask]                  # [B, T, C, N]
+        # reorder to [B, T, N, C]
+        era5_seq   = node_feats.permute(0, 1, 3, 2)   # [B, T, N, C]
+
+        optimizer.zero_grad()
+        # forward through your GCNHybrid model
+        y_pred = model(era5_seq, zeta_past, edge_index)  # [B, PRED_LEN, N]
+        loss   = criterion(y_pred, y_true)
+        loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        optimizer.step()
 
-        optimizer.step() # update weights
         train_loss += loss.item()
-    
-    train_loss /= len(train_loader)         
+    train_loss /= len(train_loader)
+    print(f"Epoch {epoch+1}/{epochs} — Train Loss: {train_loss:.4f}")       
 
     model.eval() # switch to evaluation mode
     val_loss = 0.0
     with torch.no_grad():
-        for x_era5, x_cora, y_true in val_loader:
-            x_era5, x_cora, y_true = (
-                x_era5.to(device),
-                x_cora.to(device),
-                y_true.to(device)
-            )
-            x_era5 = torch.nan_to_num(x_era5, nan=0.0) 
-            x_cora = torch.nan_to_num(x_cora, nan=0.0)
-            y_true = torch.nan_to_num(y_true, nan=0.0)
+        for x_era5, zeta_past, y_true in val_loader:
+            # Move and clean data
+            x_era5    = torch.nan_to_num(x_era5,   nan=0.0).to(device)  # [B, T, C, H, W]
+            zeta_past = torch.nan_to_num(zeta_past,nan=0.0).to(device)  # [B, T, N]
+            y_true    = torch.nan_to_num(y_true,   nan=0.0).to(device)  # [B, PRED_LEN, N]
 
-            y_pred = model(x_era5, x_cora)
-            loss = criterion(y_pred, y_true)
+            # Extract node‐level ERA5 features
+            B, T, C, H, W = x_era5.shape
+            flat        = x_era5.view(B, T, C, H*W)         # [B, T, C, H*W]
+            node_feats  = flat[..., mask]                   # [B, T, C, N]
+            era5_seq    = node_feats.permute(0, 1, 3, 2)    # [B, T, N, C]
+
+            # Forward pass
+            y_pred = model(era5_seq, zeta_past, edge_index) # [B, PRED_LEN, N]
+            loss   = criterion(y_pred, y_true)
             val_loss += loss.item()
-    val_loss /= len(val_loader)       
-    print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}")
+
+        val_loss /= len(val_loader)
+        print(f"Validation Loss: {val_loss:.4f}")
 
     scheduler.step(val_loss) # adjust LR on plateu
 

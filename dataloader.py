@@ -6,6 +6,8 @@
 import numpy as np
 import xarray as xr
 from pathlib import Path
+import torch
+from torch.utils.data import Dataset
 
 MASK_PATH = Path("/home/exouser/zeta_mask.npy")
 mask = np.load(MASK_PATH)   
@@ -17,6 +19,20 @@ PRED_LEN = 24 # predict 24 hour into the future
 TRAIN_FR = 0.7
 VAL_FR = 0.15
 
+class CORADataset(Dataset):
+    def __init__(self, X, Y):
+        # X: numpy array [N_samples, T, num_nodes, num_feats]
+        # Y: numpy array [N_samples, num_nodes]
+        self.X = torch.from_numpy(X).float()
+        self.Y = torch.from_numpy(Y).float()
+
+    def __len__(self):
+        return len(self.X)
+
+    def __getitem__(self, idx):
+        return self.X[idx], self.Y[idx]
+    
+    
 def load_era5():
     return np.load(ERA5_PATH, mmap_mode="r")   # shape (744, C, 57, 69)
 

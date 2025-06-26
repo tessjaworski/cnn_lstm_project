@@ -1,75 +1,55 @@
 import torch
 from torch import nn
+from torch_geometric.nn import GCNConv
 
-class HybridCNNLSTM(nn.Module):
-    #era5_channels is total input features
-    #out_channels is just the zeta prediction
-    def __init__(self, era5_channels, zeta_nodes, pred_steps=3, height=57, width=69, lstm_hidden=256):
-        super(HybridCNNLSTM, self).__init__()
+class GCNHybrid(nn.Module):
+    """
 
-        #cnn block
-        #handles each individual map at each timestep
-        # at each time step, conv2D extracts local spatial features
-        self.era5_cnn = nn.Sequential(
-            nn.Conv2d(era5_channels, 32, kernel_size=3, padding=1),
-            nn.ReLU(), # adds non-linearity
-            nn.MaxPool2d(2),  # downsamples the image
-            nn.Conv2d(32, 64, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2)
-        )
-
-        # compute CNN output size: 64 × (H/4) × (W/4)
-        cnn_h = height // 4
-        cnn_w = width  // 4
-        cnn_out_size = 64 * cnn_h * cnn_w
-        
-        #lstm block
-        #processes sequence of cnn outputs across timesteps
-        # learns how spatial patterns change over time
-        self.era5_lstm = nn.LSTM(
-            input_size=cnn_out_size,
-            hidden_size=lstm_hidden,
-            batch_first=True
-        )
-
-        # lstm block
-        self.zeta_lstm = nn.LSTM(
-            input_size=zeta_nodes,
-            hidden_size=lstm_hidden,
-            batch_first=True
-        )
+    Inputs:
+      - era5_channels: number of ERA5 features per node per timestep
+      - gcn_hidden: hidden dimension of the GCN layer
+      - lstm_hidden: hidden dimension of both LSTMs
+      - pred_steps: number of future time steps to predict
+    """
+    def __init__(self, era5_channels, gcn_hidden, lstm_hidden, pred_steps=1):
+        super().__init__()
+        # GCN branch for spatial features
+        self.gcn = GCNConv(era5_channels, gcn_hidden)
+        self.gcn_lstm = nn.LSTM(gcn_hidden, lstm_hidden, batch_first=True)
+        # LSTM branch for past zeta sequence
+        self.zeta_lstm = nn.LSTM(1, lstm_hidden, batch_first=True)
+        # final fully-connected layer to predict pred_steps per node
+        self.fc = nn.Linear(lstm_hidden * 2, pred_steps)
         self.pred_steps = pred_steps
-        # Merge both processed inputs
-        self.combined_fc = nn.Sequential(
-            nn.Linear(lstm_hidden * 2, 512),
-            nn.ReLU(),
-            nn.Linear(512, zeta_nodes * pred_steps)
-        )
 
-    def forward(self, era5_seq, zeta_seq):
-        # era5_seq: (batch, time, channels, height, width)
-        # unpack the input shape
-        B, T, C, H, W = era5_seq.shape
-        # merge batch and time for cnn so it can be applied to each timestep independently
-        era5_seq = era5_seq.view(B * T, C, H, W)
-        era5_features = self.era5_cnn(era5_seq)  # run cnn per time step
-        # flatten spatial features for LSTM
-        era5_features = era5_features.view(B, T, -1)  # (B, T, flattened_features)
+    def forward(self, era5_seq, zeta_seq, edge_index):
+        # era5_seq: [batch, T, num_nodes, era5_channels]
+        # zeta_seq: [batch, T, num_nodes]
+        B, T, N, F = era5_seq.shape
+        outputs = []
+        for b in range(B):
+            # spatial branch via GCN + LSTM
+            gcn_outs = []
+            for t in range(T):
+                x_t = era5_seq[b, t]                  # [num_nodes, era5_channels]
+                h = self.gcn(x_t, edge_index)         # [num_nodes, gcn_hidden]
+                gcn_outs.append(h)
+            gcn_seq = torch.stack(gcn_outs, dim=1)    # [num_nodes, T, gcn_hidden]
+            gcn_lstm_out, _ = self.gcn_lstm(gcn_seq)  # [num_nodes, T, lstm_hidden]
+            spatial_feat = gcn_lstm_out[:, -1, :]     # [num_nodes, lstm_hidden]
 
-        #run lstm
-        lstm_out, _ = self.era5_lstm(era5_features) #lstm_out is sequence of hidden states
-        #grab the last timestep's output (learned summary of the whole sequence)
-        era5_summary = lstm_out[:, -1, :]  # (B, lstm_hidden)
+            #temporal branch via Zeta LSTM
+            z_seq = zeta_seq[b].unsqueeze(-1)         # [T, num_nodes, 1]
+            # transpose to [num_nodes, T, 1] for node-wise LSTM
+            z_seq = z_seq.permute(1, 0, 2)
+            z_lstm_out, _ = self.zeta_lstm(z_seq)     # [num_nodes, T, lstm_hidden]
+            zeta_feat = z_lstm_out[:, -1, :]          # [num_nodes, lstm_hidden]
 
+            # combine and predict
+            combined = torch.cat([spatial_feat, zeta_feat], dim=1)  # [num_nodes, 2*lstm_hidden]
+            y = self.fc(combined)                                  # [num_nodes, pred_steps]
+            outputs.append(y.unsqueeze(0))                         # [1, num_nodes, pred_steps]
 
-       # Zeta branch
-        z, _ = self.zeta_lstm(zeta_seq)
-        zeta_feat = z[:, -1, :]    
-
-
-        # Combine and predict next zeta
-        combined = torch.cat([era5_summary, zeta_feat], dim=1)
-        out = self.combined_fc(combined)  # (B, zeta_nodes)
-        out = out.view(B, self.pred_steps, -1) #reshape
+        out = torch.cat(outputs, dim=0)     # [batch, num_nodes, pred_steps]
+        out = out.permute(0, 2, 1)          # [batch, pred_steps, num_nodes]
         return out
