@@ -136,7 +136,7 @@ for epoch in range(epochs):
     if best_val - val_loss > min_delta:
         best_val = val_loss
         epochs_no_improve = 0
-        torch.save(model.state_dict(), "gnn_model_12h_normalized.pth")  # * save best
+        torch.save(model.state_dict(), "gnn_model_24h_normalized.pth")  # * save best
     else:
         epochs_no_improve += 1
         if epochs_no_improve >= patience:
@@ -145,4 +145,4 @@ for epoch in range(epochs):
 
 
 # save model
-torch.save(model.state_dict(), "gnn_model_12h_normalized.pth")
+torch.save(model.state_dict(), "gnn_model_24h_normalized.pth")
