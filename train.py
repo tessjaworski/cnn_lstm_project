@@ -8,7 +8,7 @@
 import torch
 import torch.nn as nn
 import torch.utils.data as data
-from model import GCNHybrid
+from model import CNN_GNN_Hybrid
 from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
 from cora_graph      import load_cora_coordinates, build_edge_index
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -38,7 +38,6 @@ class StormSurgeDataset(data.Dataset):
 
 # load and split dataset by calling dataloader.py
 era5_mm, cora, tr_idx, va_idx, te_idx, mask_np = load_dataset()
-mask = torch.from_numpy(mask_np).to(device)
 
 # Build kNN graph over your CORA node coordinates
 coords     = load_cora_coordinates(CORA_PATH, mask_np)     
@@ -53,11 +52,13 @@ val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_worker
 
 num_era5_feats = era5_mm.shape[1]
 # initialize the model
-model = GCNHybrid(
-    era5_channels = num_era5_feats,      # number of ERA5 variables per node
-    gcn_hidden    = 64,
-    lstm_hidden   = 128,
-    pred_steps    = PRED_LEN
+model = CNN_GNN_Hybrid(
+    era5_channels     = era5_mm.shape[1],   # number of ERA5 channels per grid cell
+    cnn_hidden        = 32,                 # match your CNN channels
+    cnn_lstm_hidden   = 128,
+    gcn_hidden        = 64,
+    zeta_lstm_hidden  = 128,
+    pred_steps        = PRED_LEN
 ).to(device)
 
 # loss and optimizer
@@ -93,11 +94,8 @@ for epoch in range(epochs):
         y_true    = torch.nan_to_num(y_true,   nan=0.0).to(device)
 
         B, T, C, H, W = x_era5.shape
-        # flatten spatial dims, then mask to node locations
-        flat       = x_era5.view(B, T, C, H*W)        # [B, T, C, H*W]
-        node_feats = flat[..., mask]                  # [B, T, C, N]
-        # reorder to [B, T, N, C]
-        era5_seq   = node_feats.permute(0, 1, 3, 2)   # [B, T, N, C]
+        era5_seq = x_era5
+
 
         optimizer.zero_grad()
         # forward through your GCNHybrid model
@@ -122,9 +120,7 @@ for epoch in range(epochs):
 
             # Extract node‐level ERA5 features
             B, T, C, H, W = x_era5.shape
-            flat        = x_era5.view(B, T, C, H*W)         # [B, T, C, H*W]
-            node_feats  = flat[..., mask]                   # [B, T, C, N]
-            era5_seq    = node_feats.permute(0, 1, 3, 2)    # [B, T, N, C]
+            era5_seq = x_era5
 
             # Forward pass
             y_pred = model(era5_seq, zeta_past, edge_index) # [B, PRED_LEN, N]

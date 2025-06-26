@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
-from model import GCNHybrid
+from model import CNN_GNN_Hybrid
 from dataloader import load_dataset, load_cora_coordinates, build_edge_index, CORA_PATH, SEQ_LEN, PRED_LEN
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -42,11 +42,13 @@ test_ds     = StormSurgeDataset(era5_mm, cora_norm, test_idx)
 test_loader = data.DataLoader(test_ds, batch_size=4, shuffle=False, num_workers=2)
 
 num_era5_feats = era5_mm.shape[1]
-model = GCNHybrid(
-    era5_channels = num_era5_feats,
-    gcn_hidden    = 64,
-    lstm_hidden   = 128,
-    pred_steps    = PRED_LEN,
+model = CNN_GNN_Hybrid(
+    era5_channels    = era5_mm.shape[1],
+    cnn_hidden       = 32,
+    cnn_lstm_hidden  = 128,
+    gcn_hidden       = 64,
+    zeta_lstm_hidden = 128,
+    pred_steps       = PRED_LEN
 ).to(device)
 model.load_state_dict(torch.load("gnn_model_12h_normalized.pth", map_location=device))
 model.eval()
@@ -62,9 +64,7 @@ with torch.no_grad():
         x5 = torch.nan_to_num(x5); xz = torch.nan_to_num(xz); y_true = torch.nan_to_num(y_true)
 
         B, T, C, H, W = x5.shape
-        flat       = x5.view(B, T, C, H*W)         
-        node_feats = flat[..., mask]                 
-        era5_seq   = node_feats.permute(0, 1, 3, 2)   
+        era5_seq = x5
 
         y_pred = model(era5_seq, xz, edge_index)
         mse_total += criterion(y_pred, y_true).item()
