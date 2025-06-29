@@ -5,6 +5,7 @@ import torch.utils.data as data
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
+import matplotlib.gridspec as gridspec
 
 from model import CNN_GNN_Hybrid
 from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
