@@ -48,7 +48,7 @@ model = CNN_GNN_Hybrid(
     cnn_hidden       = 32,
     cnn_lstm_hidden  = 128,
     gcn_hidden       = 64,
-    zeta_lstm_hidden = 128,
+    zeta_lstm_hidden = 256,
     pred_steps       = PRED_LEN
 ).to(device)
 model.load_state_dict(torch.load("gnn_model_24h_normalized.pth", map_location=device))
