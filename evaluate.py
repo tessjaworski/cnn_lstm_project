@@ -93,7 +93,7 @@ plt.savefig("24hr_gnn_normalized_scatter_zeta_test.png", dpi=150)
 print("Saved 24hr_gnn_normalized_scatter_zeta_test.png")
 
 selected_frames = [0, 1, 2]  # show first 3 timesteps (adjust as needed)
-coords_np = coords.cpu().numpy()
+coords_np = coords
 pred_array = np.concatenate([x for x in all_pred], axis=0)
 true_array = np.concatenate([x for x in all_true], axis=0)
 
