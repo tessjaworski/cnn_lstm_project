@@ -103,8 +103,8 @@ for i in selected_frames:
     vmin = flat_true.min()
     vmax = flat_true.max()
 
-    sc1 = axes[0].scatter(coords_np[:, 1], coords_np[:, 0], c=true_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
-    sc2 = axes[1].scatter(coords_np[:, 1], coords_np[:, 0], c=pred_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
+    sc1 = axes[0].scatter(coords_np[:, 1], coords_np[:, 0], c=true_array[i], cmap='coolwarm', vmin=vmin, vmax=vmax)
+    sc2 = axes[1].scatter(coords_np[:, 1], coords_np[:, 0], c=pred_array[i], cmap='coolwarm', vmin=vmin, vmax=vmax)
 
     axes[0].set_title(f"Ground Truth ζ (t+{(i+1)*3}h)")
     axes[1].set_title(f"Predicted ζ (t+{(i+1)*3}h)")
