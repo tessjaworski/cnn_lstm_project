@@ -91,3 +91,30 @@ plt.title("Predicted vs. True ζ for 24 hr Prediction")
 plt.tight_layout()
 plt.savefig("24hr_gnn_normalized_scatter_zeta_test.png", dpi=150)
 print("Saved 24hr_gnn_normalized_scatter_zeta_test.png")
+
+selected_frames = [0, 1, 2]  # show first 3 timesteps (adjust as needed)
+coords_np = coords.cpu().numpy()
+pred_array = np.concatenate([x for x in all_pred], axis=0)
+true_array = np.concatenate([x for x in all_true], axis=0)
+
+for i in selected_frames:
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
+    vmin = flat_true.min()
+    vmax = flat_true.max()
+
+    sc1 = axes[0].scatter(coords_np[:, 1], coords_np[:, 0], c=true_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
+    sc2 = axes[1].scatter(coords_np[:, 1], coords_np[:, 0], c=pred_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
+
+    axes[0].set_title(f"Ground Truth ζ (t+{(i+1)*3}h)")
+    axes[1].set_title(f"Predicted ζ (t+{(i+1)*3}h)")
+    for ax in axes:
+        ax.set_xlabel("Longitude")
+        ax.set_ylabel("Latitude")
+
+    cbar = fig.colorbar(sc1, ax=axes.ravel().tolist(), shrink=0.95)
+    cbar.set_label("ζ (normalized)")
+
+    plt.tight_layout()
+    plt.savefig(f"zeta_map_timestep_{i+1}.png", dpi=150)
+    print(f"Saved zeta_map_timestep_{i+1}.png")
+    plt.close()
