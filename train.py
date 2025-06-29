@@ -56,7 +56,7 @@ model = CNN_GNN_Hybrid(
     era5_channels     = era5_mm.shape[1],   # number of ERA5 channels per grid cell
     cnn_hidden        = 32,                 # match your CNN channels
     cnn_lstm_hidden   = 128,
-    gcn_hidden        = 128,
+    gcn_hidden        = 96,
     zeta_lstm_hidden  = 128,
     pred_steps        = PRED_LEN
 ).to(device)
@@ -65,8 +65,8 @@ model = CNN_GNN_Hybrid(
 criterion = nn.MSELoss() # measures average squared error between prediction and target
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) # adapts learning rates per parameter
 
-patience = 5
-lr_reduce_patience = 2
+patience = 8
+lr_reduce_patience = 4
 min_delta = 1e-3
 
 scheduler = ReduceLROnPlateau(
@@ -81,7 +81,7 @@ best_val = float("inf")
 epochs_no_improve = 0  
 
 # training loop
-epochs = 20
+epochs = 30
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker

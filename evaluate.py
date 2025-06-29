@@ -47,7 +47,7 @@ model = CNN_GNN_Hybrid(
     era5_channels    = era5_mm.shape[1],
     cnn_hidden       = 32,
     cnn_lstm_hidden  = 128,
-    gcn_hidden       = 128,
+    gcn_hidden       = 96,
     zeta_lstm_hidden = 128,
     pred_steps       = PRED_LEN
 ).to(device)
