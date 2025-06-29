@@ -5,7 +5,6 @@ import torch.utils.data as data
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
-import matplotlib.gridspec as gridspec
 
 from model import CNN_GNN_Hybrid
 from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
@@ -101,10 +100,8 @@ true_array = np.concatenate(all_true).reshape(-1, num_nodes)
 
 for i in selected_frames:
     fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
-    gs = gridspec.GridSpec(1, 3, width_ratios=[1, 1, 0.05], wspace=0.2)
     vmin = flat_true.min()
     vmax = flat_true.max()
-    cax = plt.subplot(gs[2])
 
     sc1 = axes[0].scatter(coords_np[:, 1], coords_np[:, 0], c=true_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
     sc2 = axes[1].scatter(coords_np[:, 1], coords_np[:, 0], c=pred_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
