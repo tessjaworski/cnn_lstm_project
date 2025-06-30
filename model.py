@@ -48,16 +48,20 @@ class CNN_GNN_Hybrid(nn.Module):
         self.pred_steps = pred_steps
 
     def forward(self, era5_seq, zeta_seq, edge_index):
+        # B: batch size (num of sequences)
+        # T: time steps in the sequence
+        # C: ERA5 features per grid point
+        # H,W: spatial height and width
         # era5_seq: [B, T, C, H, W]
         # zeta_seq: [B, T, N]
-        B, T, C, H, W = era5_seq.shape
-        # ERA5 branch: CNN+LSTM
-        # apply cnn per time step
-        x = era5_seq.view(B * T, C, H, W)  # [B*T, C, H, W]
-        f = self.era5_cnn(x)               # [B*T, 2*cnn_hidden, H/4, W/4]
-        f = f.view(B, T, -1)               # [B, T, F_flat]
-        out, _ = self.cnn_lstm(f)          # [B, T, cnn_lstm_hidden]
-        era5_summary = out[:, -1, :]       # [B, cnn_lstm_hidden]
+        B, T, C, H, W = era5_seq.shape # unpacks shape of ERA5 tensor
+
+        # apply cnn independetly to each time step
+        x = era5_seq.view(B * T, C, H, W)  # reshape to merge batch and time 
+        f = self.era5_cnn(x)               # applies cnn to extract spatial features
+        f = f.view(B, T, -1)               # reshapes cnn output back into a sequence
+        out, _ = self.cnn_lstm(f)          # passes sequence of cnn features into an lstm
+        era5_summary = out[:, -1, :]       # takes full temporal context of ERA5 input
 
         # CORA branch: GNN+LSTM
         # prepare node features: past zeta one-hot per timestep
@@ -67,20 +71,20 @@ class CNN_GNN_Hybrid(nn.Module):
         for b in range(B):
             # for each time, run GCN on single-feature vector
             gcn_seq = []
-            for t in range(T):
-                z = zeta_seq[b, t].unsqueeze(-1)  # [N, 1]
-                h = self.gcn(z, edge_index)       # [N, gcn_hidden]
-                gcn_seq.append(h)
-            gcn_seq = torch.stack(gcn_seq, dim=1)         # [N, T, gcn_hidden]
-            z_out, _ = self.zeta_lstm(gcn_seq)            # [N, T, zeta_lstm_hidden]
-            zeta_feats.append(z_out[:, -1, :])           # [N, zeta_lstm_hidden]
-        zeta_summary = torch.stack(zeta_feats, dim=0)     # [B, N, zeta_lstm_hidden]
+            for t in range(T): # for each time step extract the data vector
+                z = zeta_seq[b, t].unsqueeze(-1)
+                h = self.gcn(z, edge_index)       # pass zeta snapshot through gcn that uses edge_index to gather info from neighbors
+                gcn_seq.append(h) # stack gcn outputs across time
+            gcn_seq = torch.stack(gcn_seq, dim=1)
+            z_out, _ = self.zeta_lstm(gcn_seq) # feed into lstm for temporal dependencies
+            zeta_feats.append(z_out[:, -1, :])           # keep final temporal encoding
+        zeta_summary = torch.stack(zeta_feats, dim=0)     # stack features from all samples
 
         # fuse: expand era5_summary to per-node
-        era5_feat = era5_summary.unsqueeze(1).expand(-1, zeta_summary.size(1), -1)  # [B, N, cnn_lstm_hidden]
-        combined = torch.cat([era5_feat, zeta_summary], dim=2)                     # [B, N, sum_hidden]
+        era5_feat = era5_summary.unsqueeze(1).expand(-1, zeta_summary.size(1), -1)  # one summary vector per sample
+        combined = torch.cat([era5_feat, zeta_summary], dim=2) # concat global context and node-specific zeta temporal features
 
         # predict
-        y = self.fc(combined)   # [B, N, pred_steps]
-        out = y.permute(0, 2, 1) # [B, pred_steps, N]
-        return out
+        y = self.fc(combined)   # maps feature vector to a prediction vector
+        out = y.permute(0, 2, 1) # transpose to match expected shape [B, pred_steps, num_nodes]
+        return out # model's output: for each time step in the future, it outputs the predicted zeta values at all nodes

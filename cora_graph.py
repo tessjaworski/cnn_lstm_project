@@ -14,11 +14,11 @@ def load_cora_coordinates(cora_nc_path, mask):
 
 # with the array of coordinates, build an edge_index
 def build_edge_index(coords, k=8):
-    tree = cKDTree(coords)
-    dist, idxs = tree.query(coords, k=k + 1)
+    tree = cKDTree(coords) #stores all CORA node coordinates in a tree
+    dist, idxs = tree.query(coords, k=k + 1) # make 2D array where each row contains indices of nearest nodes
     src = np.repeat(np.arange(len(coords)), k)
     dst = idxs[:, 1 : k + 1].reshape(-1)
     edge_index = torch.tensor(
         np.stack([src, dst], axis=0), dtype=torch.long
-    )  # shape: (2, N*k)
+    )
     return edge_index
