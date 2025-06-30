@@ -92,7 +92,7 @@ plt.tight_layout()
 plt.savefig("24hr_gnn_normalized_scatter_zeta_test.png", dpi=150)
 print("Saved 24hr_gnn_normalized_scatter_zeta_test.png")
 
-selected_frames = [6, 12, 24]  # show first 3 timesteps (adjust as needed)
+selected_frames = [5, 11, 23]  # show first 3 timesteps (adjust as needed)
 coords_np = coords
 num_nodes = int(mask_np.sum())
 pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
