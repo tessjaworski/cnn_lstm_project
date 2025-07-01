@@ -80,9 +80,6 @@ with torch.no_grad():
         all_true.append(y_true.cpu().numpy())
     all_pred = np.concatenate(all_pred, axis=0)  # shape: [total_samples, T, N]
     all_true = np.concatenate(all_true, axis=0)
-    print("Original test zeta range (m):", 
-      (cora_norm * σ_cora + μ_cora)[test_idx].min(), 
-      (cora_norm * σ_cora + μ_cora)[test_idx].max())
 
 n = len(test_loader)
 print(f"Test MSE: {mse_total / n:.4f}")
