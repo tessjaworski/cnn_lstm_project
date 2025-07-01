@@ -47,8 +47,8 @@ edge_index = build_edge_index(coords, k=8).to(device)
 train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
 val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
 
-train_loader = data.DataLoader(train_ds, batch_size=4, shuffle=True,  num_workers=2, pin_memory=True)
-val_loader   = data.DataLoader(val_ds,   batch_size=4, shuffle=False, num_workers=2, pin_memory=True)
+train_loader = data.DataLoader(train_ds, batch_size=1, shuffle=True,  num_workers=2, pin_memory=True)
+val_loader   = data.DataLoader(val_ds,   batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
 
 num_era5_feats = era5_mm.shape[1]
 # initialize the model

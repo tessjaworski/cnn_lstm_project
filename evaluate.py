@@ -42,7 +42,7 @@ class StormSurgeDataset(data.Dataset):
         )
 
 test_ds     = StormSurgeDataset(era5_mm, cora_norm, test_idx)
-test_loader = data.DataLoader(test_ds, batch_size=4, shuffle=False, num_workers=2)
+test_loader = data.DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=2)
 
 num_era5_feats = era5_mm.shape[1]
 model = CNN_GNN_Hybrid(
