@@ -11,7 +11,9 @@ from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
 from cora_graph      import load_cora_coordinates, build_edge_index
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask_np = load_dataset()
+era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask_np, μ_cora, σ_cora = load_dataset()
+μ_cora = torch.from_numpy(μ_cora).float().to(device)
+σ_cora = torch.from_numpy(σ_cora).float().to(device)
 mask = torch.from_numpy(mask_np).to(device)
 
 coords     = load_cora_coordinates(CORA_PATH, mask_np)
@@ -68,10 +70,17 @@ with torch.no_grad():
         era5_seq = x5
 
         y_pred = model(era5_seq, xz, edge_index)
+
+        y_pred = y_pred * σ_cora + μ_cora
+        y_true = y_true * σ_cora + μ_cora
+
         mse_total += criterion(y_pred, y_true).item()
         mae_total += torch.mean(torch.abs(y_pred - y_true)).item()
-        all_pred.append(y_pred.cpu().numpy().ravel())
-        all_true.append(y_true.cpu().numpy().ravel())
+        all_pred.append(y_pred.cpu().numpy())
+        all_true.append(y_true.cpu().numpy())
+    all_pred = np.concatenate(all_pred, axis=0)  # shape: [total_samples, T, N]
+    all_true = np.concatenate(all_true, axis=0)
+
 
 n = len(test_loader)
 print(f"Test MSE: {mse_total / n:.4f}")
@@ -98,24 +107,21 @@ num_nodes = int(mask_np.sum())
 pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
 true_array = np.concatenate(all_true).reshape(-1, num_nodes)
 
-for i in selected_frames:
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5), sharex=True, sharey=True)
-    vmin = flat_true.min()
-    vmax = flat_true.max()
+nodes_to_plot = [0, 10, 20, 30, 40]
+sample_idx = 0  # or pick more samples if you want
 
-    sc1 = axes[0].scatter(coords_np[:, 1], coords_np[:, 0], c=true_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
-    sc2 = axes[1].scatter(coords_np[:, 1], coords_np[:, 0], c=pred_array[i], cmap='viridis', vmin=vmin, vmax=vmax)
+for node_idx in nodes_to_plot:
+    pred_24 = all_pred[sample_idx, :, node_idx]
+    true_24 = all_true[sample_idx, :, node_idx]
 
-    axes[0].set_title(f"Ground Truth ζ (t+{(i+1)}h)")
-    axes[1].set_title(f"Predicted ζ (t+{(i+1)}h)")
-    for ax in axes:
-        ax.set_xlabel("Longitude")
-        ax.set_ylabel("Latitude")
-
-    cbar = fig.colorbar(sc1, ax=axes.ravel().tolist(), shrink=0.95)
-    cbar.set_label("ζ (normalized)")
-
+    plt.figure(figsize=(8, 4))
+    plt.plot(np.arange(24), true_24, label='Ground Truth ζ')
+    plt.plot(np.arange(24), pred_24, label='Predicted ζ')
+    plt.xlabel("Forecast Hour")
+    plt.ylabel("ζ (meters)")
+    plt.title(f"Node {node_idx} - 24h Forecast")
+    plt.legend()
     plt.tight_layout()
-    plt.savefig(f"zeta_map_timestep_{i+1}.png", dpi=150)
-    print(f"Saved zeta_map_timestep_{i+1}.png")
+    plt.savefig(f"time_series_node{node_idx}.png", dpi=150)
     plt.close()
+    print(f"Saved time_series_node{node_idx}.png")

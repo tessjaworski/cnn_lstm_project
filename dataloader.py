@@ -84,7 +84,7 @@ def load_dataset():
     cora    = (cora    - μ_cora) / (σ_cora  + 1e-6)
 
     # return everything to train.py
-    return era5_mm, cora, train_idx, val_idx, test_idx, mask
+    return era5_mm, cora, train_idx, val_idx, test_idx, mask, μ_cora, σ_cora
 
 if __name__ == "__main__":
     era5_mm, cora, tr, va, te, mask = load_dataset() 
