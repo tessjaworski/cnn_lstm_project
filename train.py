@@ -37,7 +37,7 @@ class StormSurgeDataset(data.Dataset):
                 torch.tensor(y,      dtype=torch.float32))
 
 # load and split dataset by calling dataloader.py
-era5_mm, cora, tr_idx, va_idx, te_idx, mask_np = load_dataset()
+era5_mm, cora, tr_idx, va_idx, test_idx, mask_np, μ_cora, σ_cora = load_dataset()
 
 # Build kNN graph over your CORA node coordinates
 coords     = load_cora_coordinates(CORA_PATH, mask_np)     
