@@ -8,6 +8,7 @@
 import torch
 import torch.nn as nn
 import torch.utils.data as data
+import matplotlib.pyplot as plt
 from model import CNN_GNN_Hybrid
 from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
 from cora_graph      import load_cora_coordinates, build_edge_index
@@ -80,6 +81,9 @@ scheduler = ReduceLROnPlateau(
 best_val = float("inf") 
 epochs_no_improve = 0  
 
+train_losses = []
+val_losses   = []
+
 # training loop
 epochs = 30
 for epoch in range(epochs):
@@ -107,6 +111,7 @@ for epoch in range(epochs):
 
         train_loss += loss.item()
     train_loss /= len(train_loader)
+    train_losses.append(train_loss)
     print(f"Epoch {epoch+1}/{epochs} — Train Loss: {train_loss:.4f}")       
 
     model.eval() # switch to evaluation mode
@@ -128,6 +133,7 @@ for epoch in range(epochs):
             val_loss += loss.item()
 
         val_loss /= len(val_loader)
+        val_losses.append(val_loss)
         print(f"Validation Loss: {val_loss:.4f}")
 
     scheduler.step(val_loss) # adjust LR on plateu
@@ -143,6 +149,16 @@ for epoch in range(epochs):
             print(f"No improvement in {patience} epochs → early stopping.")
             break
 
+plt.figure(figsize=(6,4))
+plt.plot(range(1, len(train_losses)+1), train_losses, label='Train Loss')
+plt.plot(range(1, len(val_losses)  +1), val_losses,   label='Val Loss')
+plt.xlabel('Epoch')
+plt.ylabel('MSE Loss')
+plt.title('Learning Curve')
+plt.legend()
+plt.tight_layout()
+plt.savefig('learning_curve.png', dpi=150)
+print("Saved learning_curve.png")
 
 # save model
 torch.save(model.state_dict(), "gnn_model_24h_normalized.pth")
