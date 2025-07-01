@@ -5,11 +5,11 @@ import torch
 
 
 #load CORA coordinates and return an array of coordinates
-def load_cora_coordinates(cora_nc_path, mask):
+def load_cora_coordinates(cora_nc_path, full_mask):
     ds = xr.open_dataset(cora_nc_path)
     lats = ds["lat"].values 
     lons = ds["lon"].values
-    coords = np.stack([lats, lons], axis=1)[mask]
+    coords = np.stack([lats, lons], axis=1)[full_mask]
     return coords
 
 # with the array of coordinates, build an edge_index

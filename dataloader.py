@@ -9,8 +9,6 @@ from pathlib import Path
 import torch
 from torch.utils.data import Dataset
 
-MASK_PATH = Path("/home/exouser/zeta_mask.npy")
-mask = np.load(MASK_PATH)   
 
 ERA5_PATH = "/home/exouser/stacked_era5.npy"
 CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
@@ -18,6 +16,17 @@ SEQ_LEN = 10 # past 10 hours of data as input
 PRED_LEN = 24 # predict 24 hour into the future
 TRAIN_FR = 0.7
 VAL_FR = 0.15
+
+
+def make_full_cora_mask(cora_nc_path):
+    # load the full CORA time×node array, then mark any node that is always finite
+    z = xr.open_dataset(cora_nc_path)["zeta"].transpose("time","nodes").values
+    valid = ~np.any(np.isnan(z), axis=0)   # True for nodes with no NaNs ever
+    return valid
+
+
+full_mask = make_full_cora_mask(CORA_PATH)
+np.save("zeta_full_mask.npy", full_mask)
 
 class CORADataset(Dataset):
     def __init__(self, X, Y):
@@ -42,7 +51,7 @@ def load_cora():
         .transpose("time", "nodes")
         .values.astype(np.float32)
     )
-    zeta = zeta[:, mask]
+    zeta = zeta[:, full_mask]
     zeta = np.nan_to_num(zeta, nan=0.0) # clean residual nans
     return zeta   
 
@@ -84,10 +93,11 @@ def load_dataset():
     cora    = (cora    - μ_cora) / (σ_cora  + 1e-6)
 
     # return everything to train.py
-    return era5_mm, cora, train_idx, val_idx, test_idx, mask, μ_cora, σ_cora
+    return era5_mm, cora, train_idx, val_idx, test_idx, full_mask, μ_cora, σ_cora
+
 
 if __name__ == "__main__":
-    era5_mm, cora, tr, va, te, mask = load_dataset() 
+    era5_mm, cora, tr, va, te, full_mask = load_dataset() 
     print("ERA-5 slice :", era5_mm.shape, era5_mm.dtype)
     print("CORA        :", cora.shape,    cora.dtype)
     print("splits      :", len(tr), len(va), len(te))
