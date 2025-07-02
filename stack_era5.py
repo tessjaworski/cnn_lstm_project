@@ -8,7 +8,7 @@ ERA5_ROOT = "/home/exouser/era5_gulf_data"
 MONTHS    = ["201501", "201502"]
 OUT_FILE   = "stacked_era5_2mo.npy" 
 GRID_SHAPE = (57, 69)
-t_ref = None   
+t_ref = 1416   
 
 PL_RE  = re.compile(r"an\.pl.*?_\d+_(\w+)\.ll")
 SFC_RE = re.compile(r"an\.sfc.*?_\d+_(\w+)\.ll")
@@ -16,9 +16,6 @@ VIN_RE = re.compile(r"an\.vinteg.*?_\d+_(\w+)\.ll")
 
 def accept(data, var):
     global t_ref
-    if t_ref is None:
-        t_ref = data.shape[0]          # set once
-        print(f"[info] reference hours = {t_ref}")
     if data.shape[0] != t_ref:
         print(f"[skip-len] {var} has {data.shape[0]} h (expected {t_ref})")
         return False
@@ -50,16 +47,16 @@ def load_pl_var(var):
             except Exception as e:
                 print(f"[skip] {fname} – {e}")
                 continue
-        vname = pick_vname(ds, var)
-        if vname is None:
-            print(f"[warn] {var} missing in {fname}")
-            continue
+            vname = pick_vname(ds, var)
+            if vname is None:
+                print(f"[warn] {var} missing in {fname}")
+                continue
 
-        vals = ds[vname].values     # (24, L, 57, 69)  *or*  (24, 57, 69)
-        if vals.ndim == 3:   # single-level field
-            vals = vals[:, None, :, :] 
+            vals = ds[vname].values     # (24, L, 57, 69)  *or*  (24, 57, 69)
+            if vals.ndim == 3:   # single-level field
+                vals = vals[:, None, :, :] 
 
-        arrs.append(vals)
+            arrs.append(vals)
 
     if not arrs:
         return None
