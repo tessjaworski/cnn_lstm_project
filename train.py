@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.utils.data as data
 import matplotlib.pyplot as plt
 from model import CNN_GNN_Hybrid
-from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
+from dataloader import load_dataset, CORA_PATHS, SEQ_LEN, PRED_LEN
 from cora_graph      import load_cora_coordinates, build_edge_index
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 
