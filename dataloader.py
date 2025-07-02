@@ -11,22 +11,29 @@ from torch.utils.data import Dataset
 
 
 ERA5_PATH = "/home/exouser/stacked_era5_2mo.npy"
-CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
+CORA_PATHS = [
+    "/media/volume/era5_cora_data/Jan2015_cropped.nc",
+    "/media/volume/era5_cora_data/Feb2015_cropped.nc"
+]
 SEQ_LEN = 10 # past 10 hours of data as input
 PRED_LEN = 24 # predict 24 hour into the future
 TRAIN_FR = 0.7
 VAL_FR = 0.15
 
 
-def make_full_cora_mask(cora_nc_path):
-    # load the full CORA time×node array, then mark any node that is always finite
-    z = xr.open_dataset(cora_nc_path)["zeta"].transpose("time","nodes").values
-    valid = ~np.any(np.isnan(z), axis=0)   # True for nodes with no NaNs ever
-    return valid
+def make_full_cora_mask():
+    masks = []
+    for p in CORA_PATHS:
+        ds = xr.open_dataset(p)
+        z = ds["zeta"].transpose("time","nodes").values
+        masks.append(~np.any(np.isnan(z), axis=0))
+    # only keep nodes valid in *all* months
+    full_mask = np.logical_and.reduce(masks)
+    np.save("zeta_full_mask.npy", full_mask)
+    return full_mask
 
+full_mask = make_full_cora_mask(CORA_PATHS)
 
-full_mask = make_full_cora_mask(CORA_PATH)
-np.save("zeta_full_mask.npy", full_mask)
 
 class CORADataset(Dataset):
     def __init__(self, X, Y):
@@ -43,17 +50,18 @@ class CORADataset(Dataset):
     
 
 def load_era5():
-    return np.load(ERA5_PATH, mmap_mode="r")   # shape (744, C, 57, 69)
+    return np.load(ERA5_PATH, mmap_mode="r")       # shape will be (1416, channels, H, W)
 
 def load_cora():
-    zeta = (
-        xr.open_dataset(CORA_PATH)["zeta"]
-        .transpose("time", "nodes")
-        .values.astype(np.float32)
-    )
-    zeta = zeta[:, full_mask]
-    zeta = np.nan_to_num(zeta, nan=0.0) # clean residual nans
-    return zeta   
+    arrays = []
+    for p in CORA_PATHS:
+        ds = xr.open_dataset(p)
+        z = ds["zeta"].transpose("time","nodes").values.astype(np.float32)
+        # keep only the always-valid nodes
+        arrays.append(z[:, full_mask])
+    cora = np.concatenate(arrays, axis=0)  # now shape (sum_hours, N_valid)
+    return np.nan_to_num(cora, nan=0.0)
+
 
 # create sequences
 def make_indices(T: int):
