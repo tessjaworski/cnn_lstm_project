@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-ERA5_PATH = "/home/exouser/stacked_era5.npy"
+ERA5_PATH = "/home/exouser/stacked_era5_2mo.npy"
 CORA_PATH = "/home/exouser/Jan2015_cropped.nc"
 SEQ_LEN = 10 # past 10 hours of data as input
 PRED_LEN = 24 # predict 24 hour into the future
