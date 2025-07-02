@@ -32,7 +32,7 @@ def make_full_cora_mask():
     np.save("zeta_full_mask.npy", full_mask)
     return full_mask
 
-full_mask = make_full_cora_mask(CORA_PATHS)
+full_mask = make_full_cora_mask()
 
 
 class CORADataset(Dataset):
