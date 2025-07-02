@@ -41,8 +41,8 @@ class StormSurgeDataset(data.Dataset):
 era5_mm, cora, tr_idx, va_idx, test_idx, mask_np, μ_cora, σ_cora = load_dataset()
 
 # Build kNN graph over your CORA node coordinates
-coords     = load_cora_coordinates(CORA_PATHS, mask_np)     
-edge_index = build_edge_index(coords, k=8).to(device)       
+coords     = load_cora_coordinates(CORA_PATHS[0], mask_np)
+edge_index = build_edge_index(coords, k=8).to(device)      
 
 
 train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
