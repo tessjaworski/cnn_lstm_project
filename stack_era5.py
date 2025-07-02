@@ -4,7 +4,7 @@ import numpy as np
 import xarray as xr
 import re
 
-ERA5_ROOT = "/home/exouser/era5_gulf_data"
+ERA5_ROOT = "/media/volume/era5_cora_data/era5_gulf_data"
 MONTHS    = ["201501", "201502"]
 OUT_FILE   = "stacked_era5_2mo.npy" 
 GRID_SHAPE = (57, 69)
