@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
 
 from model import CNN_GNN_Hybrid
-from dataloader import load_dataset, CORA_PATH, SEQ_LEN, PRED_LEN
+from dataloader import load_dataset, CORA_PATHS, SEQ_LEN, PRED_LEN
 from cora_graph      import load_cora_coordinates, build_edge_index
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -16,7 +16,7 @@ era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask_np, μ_cora, σ_cora = load_d
 σ_cora = torch.from_numpy(σ_cora).float().to(device)
 mask = torch.from_numpy(mask_np).to(device)
 
-coords     = load_cora_coordinates(CORA_PATH, mask_np)
+coords     = load_cora_coordinates(CORA_PATHS[0], mask_np)
 edge_index = build_edge_index(coords, k=8).to(device)
 
 # persistence baseline (3-hour forecast)
@@ -101,7 +101,7 @@ plt.savefig("24hr_gnn_normalized_scatter_zeta_test.png", dpi=150)
 print("Saved 24hr_gnn_normalized_scatter_zeta_test.png")
 
 selected_frames = [5, 11, 23]  # show first 3 timesteps (adjust as needed)
-coords_np = coords
+coords_np = coords.cpu().numpy() if torch.is_tensor(coords) else coords
 num_nodes = int(mask_np.sum())
 pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
 true_array = np.concatenate(all_true).reshape(-1, num_nodes)
