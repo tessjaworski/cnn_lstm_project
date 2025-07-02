@@ -4,8 +4,9 @@ import numpy as np
 import xarray as xr
 import re
 
-ERA5_DIR = "/home/exouser/era5_gulf_cropped_201501"
-OUT_FILE   = "stacked_era5.npy" 
+ERA5_ROOT = "/home/exouser/era5_gulf_data"
+MONTHS    = ["201501", "201502"]
+OUT_FILE   = "stacked_era5_2mo.npy" 
 GRID_SHAPE = (57, 69)
 t_ref = None   
 
@@ -38,15 +39,17 @@ def pick_vname(ds, var):
 def load_pl_var(var):
     pat = re.compile(rf"an\.pl.*?_\d+_{var.lower()}\.ll.*\.nc$", re.IGNORECASE)
     arrs = []
-    for fname in os.listdir(ERA5_DIR):
-        if not pat.search(fname):
-            continue
-        fpath = os.path.join(ERA5_DIR, fname)
-        try:
-            ds = xr.open_dataset(fpath, engine="netcdf4")
-        except Exception as e:
-            print(f"[skip] {fname} – {e}")
-            continue
+    for m in MONTHS:
+        d = os.path.join(ERA5_ROOT, f"era5_gulf_cropped_{m}")
+        for fname in os.listdir(d):
+            if not pat.search(fname): 
+                continue
+            fpath = os.path.join(d, fname)
+            try:
+                ds = xr.open_dataset(fpath, engine="netcdf4")
+            except Exception as e:
+                print(f"[skip] {fname} – {e}")
+                continue
         vname = pick_vname(ds, var)
         if vname is None:
             print(f"[warn] {var} missing in {fname}")
@@ -68,31 +71,51 @@ def load_pl_var(var):
 # Load one monthly surface variable 
 def load_sfc_var(var):
     pat = re.compile(rf"an\.sfc.*?_\d+_{var.lower()}\.ll.*\.nc$", re.IGNORECASE)
-    for fname in os.listdir(ERA5_DIR):
-        if pat.search(fname):
-            ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
+    arrs = []
+    for m in MONTHS:
+        d = os.path.join(ERA5_ROOT, f"era5_gulf_cropped_{m}")
+        for fname in os.listdir(d):
+            if not pat.search(fname): 
+                continue
+            ds = xr.open_dataset(os.path.join(d, fname))
             vname = pick_vname(ds, var)
-            if vname:
-                return ds[vname].values[:, None, :, :]   # (720,1,57,69)
-    return None
+            if not vname:
+                continue
+            # surface vars always have shape (T, H, W), so add a channel dim
+            arrs.append(ds[vname].values[:, None, :, :])
+    if not arrs:
+        return None
+    return np.concatenate(arrs, axis=0)
+
 
 # load vertically integrated variables
 def load_vinteg_var(var):
     pat = re.compile(rf"an\.vinteg.*?_\d+_{var.lower()}\.ll.*\.nc$", re.IGNORECASE)
-    for fname in os.listdir(ERA5_DIR):
-        if pat.search(fname):
-            ds = xr.open_dataset(os.path.join(ERA5_DIR, fname))
+    arrs = []
+    for m in MONTHS:
+        d = os.path.join(ERA5_ROOT, f"era5_gulf_cropped_{m}")
+        for fname in os.listdir(d):
+            if not pat.search(fname): 
+                continue
+            ds = xr.open_dataset(os.path.join(d, fname))
             vname = pick_vname(ds, var)
-            if vname:
-                return ds[vname].values[:, None, :, :]
-    return None
+            if not vname:
+                continue
+            arrs.append(ds[vname].values[:, None, :, :])
+    if not arrs:
+        return None
+    return np.concatenate(arrs, axis=0)
 
 def main():
-    files = os.listdir(ERA5_DIR)
+    all_files = []
+    for m in MONTHS:
+        d = os.path.join(ERA5_ROOT, f"era5_gulf_cropped_{m}")
+        for fname in os.listdir(d):
+            all_files.append(fname)
 
-    pl_vars  = list_vars(files,  PL_RE)
-    sfc_vars = list_vars(files, SFC_RE)
-    vin_vars = list_vars(files, VIN_RE)
+    pl_vars  = list_vars(all_files,  PL_RE)
+    sfc_vars = list_vars(all_files, SFC_RE)
+    vin_vars = list_vars(all_files, VIN_RE)
 
     print("\n Loading pressure-level vars:", ", ".join(pl_vars))
     print("Loading surface-level vars  :", ", ".join(sfc_vars))
