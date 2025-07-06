@@ -64,7 +64,7 @@ model = CNN_GNN_Hybrid(
 
 # loss and optimizer
 criterion = nn.MSELoss() # measures average squared error between prediction and target
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-3) # adapts learning rates per parameter
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-4) # adapts learning rates per parameter
 
 patience = 8
 lr_reduce_patience = 4
@@ -85,7 +85,7 @@ train_losses = []
 val_losses   = []
 
 # training loop
-epochs = 30
+epochs = 40
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
@@ -138,16 +138,16 @@ for epoch in range(epochs):
 
     scheduler.step(val_loss) # adjust LR on plateu
 
-     # early stopping logic
-    if best_val - val_loss > min_delta:
-        best_val = val_loss
-        epochs_no_improve = 0
-        torch.save(model.state_dict(), "gnn_model_24h_normalized.pth")  # * save best
-    else:
-        epochs_no_improve += 1
-        if epochs_no_improve >= patience:
-            print(f"No improvement in {patience} epochs → early stopping.")
-            break
+    # early stopping logic
+    #if best_val - val_loss > min_delta:
+     #   best_val = val_loss
+     #   epochs_no_improve = 0
+     #   torch.save(model.state_dict(), "gnn_model_24h_normalized.pth")  # * save best
+   #else:
+      #  epochs_no_improve += 1
+      #  if epochs_no_improve >= patience:
+      #      print(f"No improvement in {patience} epochs → early stopping.")
+      #      break
 
 plt.figure(figsize=(6,4))
 plt.plot(range(1, len(train_losses)+1), train_losses, label='Train Loss')
