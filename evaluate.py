@@ -123,6 +123,6 @@ for sample_idx in sample_idxs:
         plt.title(f"Node {node_idx} ({lat:.3f}N, {lon:.3f}E) – 24h Forecast")
         plt.legend()
         plt.tight_layout()
-        plt.savefig(f"time_series_node{node_idx}.png", dpi=150)
+        plt.savefig(f"time_series_node{node_idx},sample{sample_idx}.png", dpi=150)
         plt.close()
-        print(f"Saved time_series_node{node_idx}.png")
+        print(f"Saved time_series_node{node_idx},sample{sample_idx}.png")
