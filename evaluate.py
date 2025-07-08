@@ -106,22 +106,23 @@ num_nodes = int(mask_np.sum())
 pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
 true_array = np.concatenate(all_true).reshape(-1, num_nodes)
 
-nodes_to_plot = [90, 160]
-sample_idx = [50, 100]
+nodes_to_plot = [40, 160]
+sample_idxs = [50]
 
-for node_idx in nodes_to_plot:
-    lat, lon = coords_np[node_idx]
-    pred_24 = all_pred[sample_idx, :, node_idx]
-    true_24 = all_true[sample_idx, :, node_idx]
+for sample_idx in sample_idxs:
+    for node_idx in nodes_to_plot:
+        lat, lon = coords_np[node_idx]
+        pred_24 = all_pred[sample_idx, :, node_idx]
+        true_24 = all_true[sample_idx, :, node_idx]
 
-    plt.figure(figsize=(8, 4))
-    plt.plot(np.arange(24), true_24, label='Ground Truth ζ')
-    plt.plot(np.arange(24), pred_24, label='Predicted ζ')
-    plt.xlabel("Forecast Hour")
-    plt.ylabel("ζ (meters)")
-    plt.title(f"Node {node_idx} ({lat:.3f}N, {lon:.3f}E) – 24h Forecast")
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f"time_series_node{node_idx}.png", dpi=150)
-    plt.close()
-    print(f"Saved time_series_node{node_idx}.png")
+        plt.figure(figsize=(8, 4))
+        plt.plot(np.arange(24), true_24, label='Ground Truth ζ')
+        plt.plot(np.arange(24), pred_24, label='Predicted ζ')
+        plt.xlabel("Forecast Hour")
+        plt.ylabel("ζ (meters)")
+        plt.title(f"Node {node_idx} ({lat:.3f}N, {lon:.3f}E) – 24h Forecast")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig(f"time_series_node{node_idx}.png", dpi=150)
+        plt.close()
+        print(f"Saved time_series_node{node_idx}.png")
