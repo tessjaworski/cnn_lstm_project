@@ -106,8 +106,8 @@ num_nodes = int(mask_np.sum())
 pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
 true_array = np.concatenate(all_true).reshape(-1, num_nodes)
 
-nodes_to_plot = [40, 90, 160]
-sample_idx = 0
+nodes_to_plot = [90, 160]
+sample_idx = [50, 100]
 
 for node_idx in nodes_to_plot:
     lat, lon = coords_np[node_idx]
