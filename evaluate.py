@@ -106,10 +106,11 @@ num_nodes = int(mask_np.sum())
 pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
 true_array = np.concatenate(all_true).reshape(-1, num_nodes)
 
-nodes_to_plot = [0, 10, 20, 30, 40]
-sample_idx = 0  # or pick more samples if you want
+nodes_to_plot = [40, 90, 160]
+sample_idx = 0
 
 for node_idx in nodes_to_plot:
+    lat, lon = coords_np[node_idx]
     pred_24 = all_pred[sample_idx, :, node_idx]
     true_24 = all_true[sample_idx, :, node_idx]
 
@@ -118,7 +119,7 @@ for node_idx in nodes_to_plot:
     plt.plot(np.arange(24), pred_24, label='Predicted ζ')
     plt.xlabel("Forecast Hour")
     plt.ylabel("ζ (meters)")
-    plt.title(f"Node {node_idx} - 24h Forecast")
+    plt.title(f"Node {node_idx} ({lat:.3f}N, {lon:.3f}E) – 24h Forecast")
     plt.legend()
     plt.tight_layout()
     plt.savefig(f"time_series_node{node_idx}.png", dpi=150)
