@@ -24,17 +24,24 @@ class CNN_GNN_Hybrid(nn.Module):
         cnn_lstm_hidden,
         gcn_hidden,
         zeta_lstm_hidden,
-        pred_steps=1,
+        pred_steps=1
     ):
         super().__init__()
+        # dropout layers
+        self.dropout_cnn = nn.Dropout(p=0.3)
+        self.dropout_lstm_cnn = nn.Dropout(p=0.3)
+        self.dropout_lstm_zeta = nn.Dropout(p=0.3)
+        
         # ERA5 CNN branch
         self.era5_cnn = nn.Sequential(
             nn.Conv2d(era5_channels, cnn_hidden, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
+            nn.Dropout(p=0.3),
             nn.Conv2d(cnn_hidden, cnn_hidden * 2, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
+            nn.Dropout(p=0.3),
         )
         # compute flattened size dynamically at runtime
         self.cnn_lstm = nn.LSTM(cnn_hidden * 2 * (57 // 4) * (69 // 4), cnn_lstm_hidden, batch_first=True)
@@ -61,6 +68,7 @@ class CNN_GNN_Hybrid(nn.Module):
         f = self.era5_cnn(x)               # applies cnn to extract spatial features
         f = f.view(B, T, -1)               # reshapes cnn output back into a sequence
         out, _ = self.cnn_lstm(f)          # passes sequence of cnn features into an lstm
+        out = self.dropout_lstm_cnn(out)
         era5_summary = out[:, -1, :]       # takes full temporal context of ERA5 input
 
         # CORA branch: GNN+LSTM
@@ -77,6 +85,7 @@ class CNN_GNN_Hybrid(nn.Module):
                 gcn_seq.append(h) # stack gcn outputs across time
             gcn_seq = torch.stack(gcn_seq, dim=1)
             z_out, _ = self.zeta_lstm(gcn_seq) # feed into lstm for temporal dependencies
+            z_out = self.dropout_lstm_zeta(z_out)
             zeta_feats.append(z_out[:, -1, :])           # keep final temporal encoding
         zeta_summary = torch.stack(zeta_feats, dim=0)     # stack features from all samples
 
