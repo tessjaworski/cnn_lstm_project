@@ -107,22 +107,34 @@ pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
 true_array = np.concatenate(all_true).reshape(-1, num_nodes)
 
 nodes_to_plot = [40, 160]
-sample_idxs = [50]
+coverage = 72
+sample_start = 50
+horizon = PRED_LEN
+num_sliding = coverage - horizon + 1
+step = 1
 
-for sample_idx in sample_idxs:
-    for node_idx in nodes_to_plot:
-        lat, lon = coords_np[node_idx]
-        pred_24 = all_pred[sample_idx, :, node_idx]
-        true_24 = all_true[sample_idx, :, node_idx]
+sample_idxs = list(range(sample_start, sample_start + num_sliding*step, step))
 
-        plt.figure(figsize=(8, 4))
-        plt.plot(np.arange(24), true_24, label='Ground Truth ζ')
-        plt.plot(np.arange(24), pred_24, label='Predicted ζ')
-        plt.xlabel("Forecast Hour")
-        plt.ylabel("ζ (meters)")
-        plt.title(f"Node {node_idx} ({lat:.3f}N, {lon:.3f}E) – 24h Forecast")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig(f"time_series_node{node_idx},sample{sample_idx}.png", dpi=150)
-        plt.close()
-        print(f"Saved time_series_node{node_idx},sample{sample_idx}.png")
+for node_idx in nodes_to_plot:
+    plt.figure(figsize=(10,4))
+    for samp in sample_idxs:
+        # grab that window’s 24-h curve
+        true_curve = all_true[samp, :horizon, node_idx]
+        pred_curve = all_pred[samp, :horizon, node_idx]
+
+        # absolute time of each point in this segment
+        times = samp + np.arange(horizon)
+
+        # plot with a bit of transparency
+        plt.plot(times, true_curve,  label='True'    if samp==sample_start else None, color='C0', alpha=0.6)
+        plt.plot(times, pred_curve,  label='Predicted'if samp==sample_start else None, color='C1', alpha=0.6)
+
+    lat, lon = coords_np[node_idx]
+    plt.title(f"Node {node_idx} ({lat:.3f}N, {lon:.3f}E) — 24h forecasts\nsliding windows {sample_start}→{sample_idxs[-1]}")
+    plt.xlabel("Hour index")
+    plt.ylabel("ζ (m)")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f"long_timeseries_node{node_idx}.png", dpi=150)
+    plt.close()
+    print(f"Saved long_timeseries_node{node_idx}.png")
