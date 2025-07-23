@@ -37,18 +37,14 @@ class CNN_GNN_Hybrid(nn.Module):
             nn.Conv2d(era5_channels, cnn_hidden, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            nn.Dropout(p=0.5),
-            nn.Conv2d(cnn_hidden, cnn_hidden * 2, kernel_size=3, padding=1),
-            nn.ReLU(),
-            nn.MaxPool2d(2),
-            nn.Dropout(p=0.5),
+            nn.Dropout(p=0.5)
         )
         # compute flattened size dynamically at runtime
-        self.cnn_lstm = nn.LSTM(cnn_hidden * 2 * (57 // 4) * (69 // 4), cnn_lstm_hidden, batch_first=True, num_layers=2,dropout=0.5)
+        self.cnn_lstm = nn.LSTM(cnn_hidden * 2 * (57 // 4) * (69 // 4), cnn_lstm_hidden, batch_first=True)
 
         # CORA GNN branch
         self.gcn = GCNConv(1, gcn_hidden)
-        self.zeta_lstm = nn.LSTM(gcn_hidden, zeta_lstm_hidden, batch_first=True, num_layers = 2, dropout=0.5)
+        self.zeta_lstm = nn.LSTM(gcn_hidden, zeta_lstm_hidden, batch_first=True)
 
         # Fusion and prediction
         self.fc = nn.Linear(cnn_lstm_hidden + zeta_lstm_hidden, pred_steps)
