@@ -28,27 +28,27 @@ class CNN_GNN_Hybrid(nn.Module):
     ):
         super().__init__()
         # dropout layers
-        self.dropout_cnn = nn.Dropout(p=0.3)
-        self.dropout_lstm_cnn = nn.Dropout(p=0.3)
-        self.dropout_lstm_zeta = nn.Dropout(p=0.3)
+        self.dropout_lstm_cnn = nn.Dropout(p=0.5)
+        self.dropout_lstm_zeta = nn.Dropout(p=0.5)
+        self.dropout_fc = nn.Dropout(p=0.5)
         
         # ERA5 CNN branch
         self.era5_cnn = nn.Sequential(
             nn.Conv2d(era5_channels, cnn_hidden, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            nn.Dropout(p=0.3),
+            nn.Dropout(p=0.5),
             nn.Conv2d(cnn_hidden, cnn_hidden * 2, kernel_size=3, padding=1),
             nn.ReLU(),
             nn.MaxPool2d(2),
-            nn.Dropout(p=0.3),
+            nn.Dropout(p=0.5),
         )
         # compute flattened size dynamically at runtime
-        self.cnn_lstm = nn.LSTM(cnn_hidden * 2 * (57 // 4) * (69 // 4), cnn_lstm_hidden, batch_first=True)
+        self.cnn_lstm = nn.LSTM(cnn_hidden * 2 * (57 // 4) * (69 // 4), cnn_lstm_hidden, batch_first=True, num_layers=2,dropout=0.5)
 
         # CORA GNN branch
         self.gcn = GCNConv(1, gcn_hidden)
-        self.zeta_lstm = nn.LSTM(gcn_hidden, zeta_lstm_hidden, batch_first=True)
+        self.zeta_lstm = nn.LSTM(gcn_hidden, zeta_lstm_hidden, batch_first=True, num_layers = 2, dropout=0.5)
 
         # Fusion and prediction
         self.fc = nn.Linear(cnn_lstm_hidden + zeta_lstm_hidden, pred_steps)
@@ -92,6 +92,7 @@ class CNN_GNN_Hybrid(nn.Module):
         # fuse: expand era5_summary to per-node
         era5_feat = era5_summary.unsqueeze(1).expand(-1, zeta_summary.size(1), -1)  # one summary vector per sample
         combined = torch.cat([era5_feat, zeta_summary], dim=2) # concat global context and node-specific zeta temporal features
+        combined = self.dropout_fc(combined)
 
         # predict
         y = self.fc(combined)   # maps feature vector to a prediction vector
