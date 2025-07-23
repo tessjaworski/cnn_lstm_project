@@ -62,9 +62,14 @@ model = CNN_GNN_Hybrid(
     pred_steps        = PRED_LEN
 ).to(device)
 
+total_params = sum(p.numel() for p in model.parameters())
+trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+print(f"Total parameters: {total_params:,}")
+print(f"Trainable parameters: {trainable_params:,}")
+
 # loss and optimizer
 criterion = nn.MSELoss() # measures average squared error between prediction and target
-optimizer = torch.optim.Adam(model.parameters(), lr=3e-4) # adapts learning rates per parameter
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-4) # adapts learning rates per parameter
 
 patience = 8
 lr_reduce_patience = 4
