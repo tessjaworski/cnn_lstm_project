@@ -15,7 +15,7 @@ CORA_PATHS = [
     "/media/volume/era5_cora_data/Jan2015_cropped.nc",
     "/media/volume/era5_cora_data/Feb2015_cropped.nc"
 ]
-SEQ_LEN = 10 # past 10 hours of data as input
+SEQ_LEN = 24 # past 24 hours of data as input
 PRED_LEN = 24 # predict 24 hour into the future
 TRAIN_FR = 0.7
 VAL_FR = 0.15
