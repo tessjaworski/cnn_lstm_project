@@ -51,7 +51,7 @@ class CORADataset(Dataset):
 def load_era5():
     return np.load(ERA5_PATH, mmap_mode="r")       # shape will be (1416, channels, H, W)
 
-def load_cora():
+def load_cora(full_mask):
     arrays = []
     for p in CORA_PATHS:
         ds = xr.open_dataset(p)
@@ -78,6 +78,7 @@ def make_indices(T: int):
 
 # main function that will be called in train.py
 def load_dataset():
+    full_mask = make_full_cora_mask()
      # load raw data
     era5_mm = load_era5()
     cora    = load_cora()
@@ -98,7 +99,6 @@ def load_dataset():
     μ_cora   = c_train.mean(axis=0, keepdims=True)
     σ_cora   = c_train.std (axis=0, keepdims=True)
 
-    full_mask = make_full_cora_mask()
 
     # return everything to train.py
     return (
