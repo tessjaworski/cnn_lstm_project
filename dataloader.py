@@ -81,7 +81,7 @@ def load_dataset():
     full_mask = make_full_cora_mask()
      # load raw data
     era5_mm = load_era5()
-    cora    = load_cora()
+    cora    = load_cora(full_mask)
 
     # align by trimming ERA-5 to CORA’s 30-day span (720 h)
     L = len(cora) 
