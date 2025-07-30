@@ -10,10 +10,14 @@ import torch
 from torch.utils.data import Dataset
 
 
-ERA5_PATH = "/media/volume/era5_cora_data/stacked_era5_3mo.npy"
+ERA5_PATH = "/media/volume/era5_cora_data/stacked_era5_6mo.npy"
 CORA_PATHS = [
-    "/media/volume/era5_cora_data/cora_gulf_data/Jan2015_cropped.nc",
-    "/media/volume/era5_cora_data/cora_gulf_data/Feb2015_cropped.nc"
+    "/media/volume/era5_cora_data/cora_gulf_data/201501_cropped.nc",
+    "/media/volume/era5_cora_data/cora_gulf_data/201502_cropped.nc",
+    "/media/volume/era5_cora_data/cora_gulf_data/201503_cropped.nc",
+    "/media/volume/era5_cora_data/cora_gulf_data/201504_cropped.nc",
+    "/media/volume/era5_cora_data/cora_gulf_data/201505_cropped.nc",
+    "/media/volume/era5_cora_data/cora_gulf_data/201506_cropped.nc"
 ]
 SEQ_LEN = 24 # past 24 hours of data as input
 PRED_LEN = 24 # predict 24 hour into the future
