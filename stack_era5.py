@@ -11,7 +11,7 @@ def compute_tref(months):
 
 ERA5_ROOT = "/media/volume/era5_cora_data/era5_gulf_data"
 MONTHS    = ["201501", "201502", "201503"]
-OUT_FILE   = "stacked_era5_3mo.npy" 
+OUT_FILE   = "/media/volume/era5_cora_data/stacked_era5_3mo.npy" 
 GRID_SHAPE = (57, 69)
 t_ref = compute_tref(MONTHS)
 
