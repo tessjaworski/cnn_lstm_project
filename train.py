@@ -63,13 +63,14 @@ class StormSurgeDataset(data.Dataset):
                 torch.from_numpy(y).float())
 
 
-# Build kNN graph over your CORA node coordinates
-coords     = load_cora_coordinates(CORA_PATHS[0], mask_np)
-edge_index = build_edge_index(coords, k=8).to(device)      
+# Build kNN graph over your CORA node coordinates  
 log_mem("before load_dataset")
-era5_mm, μ_e5, σ_e5, cora, μ_cora, σ_cora, \
+era5_mm, μ_e5, σ_e5, \
+cora,   μ_cora, σ_cora, \
 tr_idx, va_idx, test_idx, mask_np = load_dataset()
 log_mem("after load_dataset")
+coords     = load_cora_coordinates(CORA_PATHS[0], mask_np)
+edge_index = build_edge_index(coords, k=8).to(device) 
 train_ds = StormSurgeDataset(
     era5_mm, μ_e5, σ_e5,
     cora,   μ_cora, σ_cora,
