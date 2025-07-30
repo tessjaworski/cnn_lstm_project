@@ -32,7 +32,6 @@ def make_full_cora_mask():
     np.save("zeta_full_mask.npy", full_mask)
     return full_mask
 
-full_mask = make_full_cora_mask()
 
 
 class CORADataset(Dataset):
@@ -98,6 +97,8 @@ def load_dataset():
     c_train  = cora[train_idx]             # shape: (n_train, N)
     μ_cora   = c_train.mean(axis=0, keepdims=True)
     σ_cora   = c_train.std (axis=0, keepdims=True)
+
+    full_mask = make_full_cora_mask()
 
     # return everything to train.py
     return (
