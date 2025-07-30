@@ -130,7 +130,8 @@ def main():
     for var_list, loader in var_loaders:
         for var in var_list:
             data = loader(var)
-            if data is None:
+            if data is None or data.shape[0] != t_ref:
+                print(f"[skip-len] {var} has {None if data is None else data.shape[0]} h (expected {t_ref})")
                 continue
             channels_per_var[var] = data.shape[1]
             del data
@@ -154,7 +155,11 @@ def main():
             if not n_chan:
                 continue
             print(f"Writing {var}: channels {chan_idx}:{chan_idx+n_chan}")
-            data = loader(var).astype("float32")
+            data = loader(var)
+            if data is None or data.shape[0] != t_ref:
+                print(f"[skip-len] {var} has {None if data is None else data.shape[0]} h (expected {t_ref}), skipping write")
+                continue
+            data = data.astype("float32")
             mmap[:, chan_idx:chan_idx+n_chan, :, :] = data
             chan_idx += n_chan
             del data
