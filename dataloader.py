@@ -100,7 +100,12 @@ def load_dataset():
     σ_cora   = c_train.std (axis=0, keepdims=True)
 
     # return everything to train.py
-    return era5_mm, cora, train_idx, val_idx, test_idx, full_mask, μ_cora, σ_cora
+    return (
+        era5_mm, μ_era5, σ_era5,
+        cora,   μ_cora, σ_cora,
+        train_idx, val_idx, test_idx,
+        full_mask
+    )
 
 
 if __name__ == "__main__":
