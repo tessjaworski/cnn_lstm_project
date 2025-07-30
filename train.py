@@ -83,8 +83,8 @@ val_ds   = StormSurgeDataset(
 )
 
 train_loader = data.DataLoader(
-    train_ds, batch_size=1,
-    shuffle=True,  num_workers=0, pin_memory=False
+    train_ds, batch_size=4,
+    shuffle=True,  num_workers=4, pin_memory=True
 )
 val_loader   = data.DataLoader(
     val_ds,   batch_size=1,
@@ -130,7 +130,7 @@ train_losses = []
 val_losses   = []
 
 # training loop
-epochs = 40
+epochs = 10
 for epoch in range(epochs):
     model.train() # set model to training mode
     train_loss = 0.0 #reset training loss tracker
