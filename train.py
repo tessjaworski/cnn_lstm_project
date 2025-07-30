@@ -95,10 +95,10 @@ num_era5_feats = era5_mm.shape[1]
 # initialize the model
 model = CNN_GNN_Hybrid(
     era5_channels     = era5_mm.shape[1],   # number of ERA5 channels per grid cell
-    cnn_hidden        = 16,                 # match your CNN channels
-    cnn_lstm_hidden   = 32,
-    gcn_hidden        = 16,
-    zeta_lstm_hidden  = 16,
+    cnn_hidden        = 4,                 # match your CNN channels
+    cnn_lstm_hidden   = 8,
+    gcn_hidden        = 4,
+    zeta_lstm_hidden  = 4,
     pred_steps        = PRED_LEN
 ).to(device)
 
