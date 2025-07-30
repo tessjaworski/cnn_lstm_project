@@ -5,6 +5,14 @@
 # evaluate on validation set
 # save the model weights
 
+import psutil
+
+def log_mem(stage):
+    vm = psutil.virtual_memory()
+    print(f"[{stage}] Used {(vm.used/1024**3):.1f} GB / Available {(vm.available/1024**3):.1f} GB")
+
+log_mem("start")
+
 import torch
 import torch.nn as nn
 import torch.utils.data as data
@@ -58,10 +66,10 @@ class StormSurgeDataset(data.Dataset):
 # Build kNN graph over your CORA node coordinates
 coords     = load_cora_coordinates(CORA_PATHS[0], mask_np)
 edge_index = build_edge_index(coords, k=8).to(device)      
-
+log_mem("before load_dataset")
 era5_mm, μ_e5, σ_e5, cora, μ_cora, σ_cora, \
 tr_idx, va_idx, test_idx, mask_np = load_dataset()
-
+log_mem("after load_dataset")
 train_ds = StormSurgeDataset(
     era5_mm, μ_e5, σ_e5,
     cora,   μ_cora, σ_cora,
