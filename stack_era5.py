@@ -4,11 +4,16 @@ import numpy as np
 import xarray as xr
 import re
 
+def compute_tref(months):
+    import calendar
+    total_days = sum(calendar.monthrange(int(m[:4]), int(m[4:]))[1] for m in months)
+    return total_days * 24
+
 ERA5_ROOT = "/media/volume/era5_cora_data/era5_gulf_data"
-MONTHS    = ["201501", "201502"]
-OUT_FILE   = "stacked_era5_2mo.npy" 
+MONTHS    = ["201501", "201502", "201503"]
+OUT_FILE   = "stacked_era5_3mo.npy" 
 GRID_SHAPE = (57, 69)
-t_ref = 1416   
+t_ref = compute_tref(MONTHS)
 
 PL_RE  = re.compile(r"an\.pl.*?_\d+_(\w+)\.ll")
 SFC_RE = re.compile(r"an\.sfc.*?_\d+_(\w+)\.ll")
