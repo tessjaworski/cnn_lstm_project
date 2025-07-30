@@ -161,3 +161,6 @@ def main():
 
     mmap.flush()
     print(f"Stacked ERA5 memmap saved to {OUT_FILE}")
+
+if __name__ == "__main__":
+    main()
