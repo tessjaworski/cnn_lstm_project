@@ -80,8 +80,8 @@ def make_indices(T: int):
 # main function that will be called in train.py
 def load_dataset():
      # load raw data
-    era5_mm = load_era5()          # (744, 647, 57, 69)
-    cora    = load_cora()          # (720, nodes)
+    era5_mm = load_era5()
+    cora    = load_cora()
 
     # align by trimming ERA-5 to CORA’s 30-day span (720 h)
     L = len(cora) 
@@ -91,14 +91,13 @@ def load_dataset():
     train_idx, val_idx, test_idx = make_indices(L)
 
     #normalization
-    e5_train = era5_mm[train_idx]          # shape: (n_train, C, H, W)
+    e5_train = era5_mm[train_idx] 
     μ_era5   = e5_train.mean(axis=(0,2,3), keepdims=True)
     σ_era5   = e5_train.std (axis=(0,2,3), keepdims=True)
+
     c_train  = cora[train_idx]             # shape: (n_train, N)
     μ_cora   = c_train.mean(axis=0, keepdims=True)
     σ_cora   = c_train.std (axis=0, keepdims=True)
-    era5_mm = (era5_mm - μ_era5) / (σ_era5 + 1e-6)
-    cora    = (cora    - μ_cora) / (σ_cora  + 1e-6)
 
     # return everything to train.py
     return era5_mm, cora, train_idx, val_idx, test_idx, full_mask, μ_cora, σ_cora

@@ -20,9 +20,16 @@ print("Using device:", device)
 
 # slicing dataset
 class StormSurgeDataset(data.Dataset):
-    def __init__(self, era5_mm, cora_arr, start_idx):
+    def __init__(self,
+                 era5_mm, μ_e5, σ_e5,
+                 cora_arr, μ_c, σ_c,
+                 start_idx):
         self.era5 = era5_mm     # mem-mapped numpy (720, 647, 57, 69)
+        self.μ_e5 = μ_e5
+        self.σ_e5 = σ_e5
         self.cora = cora_arr    # ndarray in RAM   (720, nodes)
+        self.μ_c  = μ_c
+        self.σ_c  = σ_c
         self.idxs = start_idx   # 1-D array of sequence start positions
 
     def __len__(self):
@@ -30,26 +37,50 @@ class StormSurgeDataset(data.Dataset):
 
     def __getitem__(self, idx):
         i = self.idxs[idx]
-        x_era5 = self.era5[i : i + SEQ_LEN]     # (T,C,H,W)
-        x_cora = self.cora[i : i + SEQ_LEN]     # (T,N)
-        y      = self.cora[i + SEQ_LEN: i + SEQ_LEN + PRED_LEN] # multi step predictions
-        return (torch.tensor(x_era5, dtype=torch.float32),
-                torch.tensor(x_cora, dtype=torch.float32),
-                torch.tensor(y,      dtype=torch.float32))
 
-# load and split dataset by calling dataloader.py
-era5_mm, cora, tr_idx, va_idx, test_idx, mask_np, μ_cora, σ_cora = load_dataset()
+        # ERA5 sequence + normalization
+        x = self.era5[i : i+SEQ_LEN]
+        x = (x - self.μ_e5) / (self.σ_e5 + 1e-6)
+
+        # CORA past sequence
+        z = self.cora[i : i+SEQ_LEN]
+        z = (z - self.μ_c) / (self.σ_c + 1e-6)
+
+        #CORA future targets
+        y = self.cora[i+SEQ_LEN : i+SEQ_LEN+PRED_LEN]
+        y = (y - self.μ_c) / (self.σ_c + 1e-6)
+
+        return (torch.from_numpy(x).float(),
+                torch.from_numpy(z).float(),
+                torch.from_numpy(y).float())
+
 
 # Build kNN graph over your CORA node coordinates
 coords     = load_cora_coordinates(CORA_PATHS[0], mask_np)
 edge_index = build_edge_index(coords, k=8).to(device)      
 
+era5_mm, μ_e5, σ_e5, cora, μ_cora, σ_cora, \
+tr_idx, va_idx, test_idx, mask_np = load_dataset()
 
-train_ds = StormSurgeDataset(era5_mm, cora, tr_idx)
-val_ds   = StormSurgeDataset(era5_mm, cora, va_idx)
+train_ds = StormSurgeDataset(
+    era5_mm, μ_e5, σ_e5,
+    cora,   μ_cora, σ_cora,
+    tr_idx
+)
+val_ds   = StormSurgeDataset(
+    era5_mm, μ_e5, σ_e5,
+    cora,   μ_cora, σ_cora,
+    va_idx
+)
 
-train_loader = data.DataLoader(train_ds, batch_size=1, shuffle=True,  num_workers=2, pin_memory=True)
-val_loader   = data.DataLoader(val_ds,   batch_size=1, shuffle=False, num_workers=2, pin_memory=True)
+train_loader = data.DataLoader(
+    train_ds, batch_size=1,
+    shuffle=True,  num_workers=0, pin_memory=False
+)
+val_loader   = data.DataLoader(
+    val_ds,   batch_size=1,
+    shuffle=False, num_workers=0, pin_memory=False
+)
 
 num_era5_feats = era5_mm.shape[1]
 # initialize the model
