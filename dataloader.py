@@ -10,7 +10,7 @@ import torch
 from torch.utils.data import Dataset
 
 
-ERA5_PATH = "/home/exouser/stacked_era5_2mo.npy"
+ERA5_PATH = "/media/volume/era5_cora_data/stacked_era5_3mo.npy"
 CORA_PATHS = [
     "/media/volume/era5_cora_data/Jan2015_cropped.nc",
     "/media/volume/era5_cora_data/Feb2015_cropped.nc"
