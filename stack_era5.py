@@ -7,7 +7,7 @@ from numpy.lib.format import open_memmap
 
 
 ERA5_ROOT = "/media/volume/era5_cora_data/era5_gulf_data"
-MONTHS    = ["201501", "201502", "201503", "201504", "201505", "201506"]
+MONTHS    = ["201501", "201502", "201503", "201504", "201505", "201506", "201507","201508","201509","201510","201511","201512",]
 OUT_FILE   = "/media/volume/era5_cora_data/stacked_era5_6mo.npy" 
 GRID_SHAPE = (57, 69)
 
