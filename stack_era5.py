@@ -124,8 +124,8 @@ def main():
     var_loaders = [ (pl_vars, load_pl_var),
                     (sfc_vars, load_sfc_var),
                     (vin_vars, load_vinteg_var) ]
-
-    # 1) Determine channels per variable
+# 1) First pass: figure out which vars we will actually write
+    write_list = []
     channels_per_var = {}
     for var_list, loader in var_loaders:
         for var in var_list:
@@ -133,13 +133,16 @@ def main():
             if data is None or data.shape[0] != t_ref:
                 print(f"[skip-len] {var} has {None if data is None else data.shape[0]} h (expected {t_ref})")
                 continue
-            channels_per_var[var] = data.shape[1]
+            n_chan = data.shape[1]
+            channels_per_var[var] = n_chan
+            write_list.append((var, loader))
             del data
 
-    total_channels = sum(channels_per_var.values())
-    print(f"Total channels: {total_channels}")
+    # 2) Recompute total channels *only* over those we’ll write
+    total_channels = sum(channels_per_var[var] for var, _ in write_list)
+    print(f"Total channels (to be written): {total_channels}")
 
-    # 2) Create the on-disk memmap
+    # 3) Allocate the memmap with exactly that many channels
     mmap = open_memmap(
         OUT_FILE,
         mode="w+",
@@ -147,22 +150,16 @@ def main():
         shape=(t_ref, total_channels, *GRID_SHAPE)
     )
 
-    # 3) Fill the memmap chunk-by-chunk
+    # 4) Write out in one pass, using the exact same write_list
     chan_idx = 0
-    for var_list, loader in var_loaders:
-        for var in var_list:
-            n_chan = channels_per_var.get(var, 0)
-            if not n_chan:
-                continue
-            print(f"Writing {var}: channels {chan_idx}:{chan_idx+n_chan}")
-            data = loader(var)
-            if data is None or data.shape[0] != t_ref:
-                print(f"[skip-len] {var} has {None if data is None else data.shape[0]} h (expected {t_ref}), skipping write")
-                continue
-            data = data.astype("float32")
-            mmap[:, chan_idx:chan_idx+n_chan, :, :] = data
-            chan_idx += n_chan
-            del data
+    for var, loader in write_list:
+        n_chan = channels_per_var[var]
+        print(f"Writing {var}: channels {chan_idx}:{chan_idx+n_chan}")
+        data = loader(var).astype("float32")
+        # no need to re‐check length here, because only in write_list if it matched
+        mmap[:, chan_idx:chan_idx+n_chan, :, :] = data
+        chan_idx += n_chan
+        del data
 
     mmap.flush()
     print(f"Stacked ERA5 memmap saved to {OUT_FILE}")
