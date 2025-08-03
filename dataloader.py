@@ -10,15 +10,9 @@ import torch
 from torch.utils.data import Dataset
 
 
-ERA5_PATH = "/media/volume/era5_cora_data/stacked_era5_6mo.npy"
-CORA_PATHS = [
-    "/media/volume/era5_cora_data/cora_gulf_data/cropped/201501_cropped.nc",
-    "/media/volume/era5_cora_data/cora_gulf_data/cropped/201502_cropped.nc",
-    "/media/volume/era5_cora_data/cora_gulf_data/cropped/201503_cropped.nc",
-    "/media/volume/era5_cora_data/cora_gulf_data/cropped/201504_cropped.nc",
-    "/media/volume/era5_cora_data/cora_gulf_data/cropped/201505_cropped.nc",
-    "/media/volume/era5_cora_data/cora_gulf_data/cropped/201506_cropped.nc"
-]
+ERA5_PATH = "/media/volume/era5_cora_data/stacked_era5_12mo.npy"
+cropped_dir = Path("/media/volume/era5_cora_data/cora_gulf_data/cropped")
+CORA_PATHS = sorted(str(p) for p in cropped_dir.glob("[0-9]"*6 + "_cropped.nc"))
 SEQ_LEN = 24 # past 24 hours of data as input
 PRED_LEN = 24 # predict 24 hour into the future
 TRAIN_FR = 0.7
