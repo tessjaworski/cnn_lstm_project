@@ -131,38 +131,38 @@ def main():
         for var in var_list:
             data = loader(var)
             if data is None or data.shape[0] != t_ref:
-                print(f"[skip-len] {var} has {None if data is None else data.shape[0]} h (expected {t_ref})")
+                print(f"[skip-len] {var} has "
+                      f"{None if data is None else data.shape[0]} h "
+                      f"(expected {t_ref})")
                 continue
             n_chan = data.shape[1]
             channels_per_var[var] = n_chan
             write_list.append((var, loader))
             del data
 
-    # 2) Recompute total channels *only* over those we’ll write
-    total_channels = sum(channels_per_var[var] for var, _ in write_list)
-    print(f"Total channels (to be written): {total_channels}")
+    # ────────────────────────────────────────────────────────
+    # 2) Compute total_channels *and then* allocate in RAM
+    total_channels = sum(channels_per_var.values())
+    print(f"Total channels to write: {total_channels}")
 
-    # 3) Allocate the memmap with exactly that many channels
-    mmap = open_memmap(
-        OUT_FILE,
-        mode="w+",
-        dtype="float32",
-        shape=(t_ref, total_channels, *GRID_SHAPE)
-    )
+    full_shape = (t_ref, total_channels, *GRID_SHAPE)
+    print(f"Allocating full array of shape {full_shape} in RAM…")
+    era5 = np.empty(full_shape, dtype=np.float32)
 
-    # 4) Write out in one pass, using the exact same write_list
+    # 3) Fill it chunk‐by‐chunk
     chan_idx = 0
     for var, loader in write_list:
         n_chan = channels_per_var[var]
         print(f"Writing {var}: channels {chan_idx}:{chan_idx+n_chan}")
-        data = loader(var).astype("float32")
-        # no need to re‐check length here, because only in write_list if it matched
-        mmap[:, chan_idx:chan_idx+n_chan, :, :] = data
+        block = loader(var).astype(np.float32)  # shape (t_ref, n_chan, H, W)
+        era5[:, chan_idx:chan_idx+n_chan, :, :] = block
         chan_idx += n_chan
-        del data
+        del block
 
-    mmap.flush()
-    print(f"Stacked ERA5 memmap saved to {OUT_FILE}")
+    # 4) Save once to disk
+    print(f"Saving full array to {OUT_FILE} …")
+    np.save(OUT_FILE, era5)
+    print("Done.")
 
 if __name__ == "__main__":
     main()
