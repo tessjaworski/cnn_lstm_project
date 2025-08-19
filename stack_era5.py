@@ -28,7 +28,7 @@ def list_vars(files, regex):
     return sorted({regex.search(f).group(1).upper() for f in files if regex.search(f)})
 
 def pick_vname(ds, var):
-    if var in ds.data_vars:                 # already UPPER
+    if var in ds.data_vars:
         return var
     low = var.lower()
     return next((v for v in ds.data_vars if v.lower() == low), None)
@@ -54,8 +54,8 @@ def load_pl_var(var):
                 print(f"[warn] {var} missing in {fname}")
                 continue
 
-            vals = ds[vname].values     # (24, L, 57, 69)  *or*  (24, 57, 69)
-            if vals.ndim == 3:   # single-level field
+            vals = ds[vname].values
+            if vals.ndim == 3:
                 vals = vals[:, None, :, :] 
 
             arrs.append(vals)
@@ -63,7 +63,7 @@ def load_pl_var(var):
     if not arrs:
         return None
 
-    data = np.concatenate(arrs, axis=0)   # (720, L, 57, 69)
+    data = np.concatenate(arrs, axis=0)
     return data  
 
 
@@ -124,7 +124,7 @@ def main():
     var_loaders = [ (pl_vars, load_pl_var),
                     (sfc_vars, load_sfc_var),
                     (vin_vars, load_vinteg_var) ]
-# 1) First pass: figure out which vars we will actually write
+# First pass: figure out which vars we will actually write
     write_list = []
     channels_per_var = {}
     for var_list, loader in var_loaders:
@@ -140,8 +140,7 @@ def main():
             write_list.append((var, loader))
             del data
 
-    # ────────────────────────────────────────────────────────
-    # 2) Compute total_channels *and then* allocate in RAM
+    # Compute total_channels and allocate full array in memory
     total_channels = sum(channels_per_var.values())
     print(f"Total channels to write: {total_channels}")
 
@@ -149,7 +148,7 @@ def main():
     print(f"Allocating full array of shape {full_shape} in RAM…")
     era5 = np.empty(full_shape, dtype=np.float32)
 
-    # 3) Fill it chunk‐by‐chunk
+    # Fill it chunk‐by‐chunk
     chan_idx = 0
     for var, loader in write_list:
         n_chan = channels_per_var[var]
@@ -159,7 +158,7 @@ def main():
         chan_idx += n_chan
         del block
 
-    # 4) Save once to disk
+    # Save once to disk
     print(f"Saving full array to {OUT_FILE} …")
     np.save(OUT_FILE, era5)
     print("Done.")
