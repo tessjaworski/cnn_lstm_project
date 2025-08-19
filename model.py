@@ -43,7 +43,8 @@ class CNN_GNN_Hybrid(nn.Module):
             nn.MaxPool2d(2),
             nn.Dropout(p=0.5),
         )
-        # compute flattened size dynamically at runtime
+        # flattened size assumes ERA5 inputs are 57x69 (Gulf of Mexico bounding box)
+        # becomes (57//4 x 69//4) after two pooling layers
         self.cnn_lstm = nn.LSTM(cnn_hidden * 2 * (57 // 4) * (69 // 4), cnn_lstm_hidden, batch_first=True)
 
         # CORA GNN branch
@@ -72,7 +73,7 @@ class CNN_GNN_Hybrid(nn.Module):
         era5_summary = out[:, -1, :]       # takes full temporal context of ERA5 input
 
         # CORA branch: GNN+LSTM
-        # prepare node features: past zeta one-hot per timestep
+        # prepare node features: past zeta values per timestep
         # zeta_seq shape [B, T, N]
         # process each batch sample separately
         zeta_feats = []
@@ -89,8 +90,8 @@ class CNN_GNN_Hybrid(nn.Module):
             zeta_feats.append(z_out[:, -1, :])           # keep final temporal encoding
         zeta_summary = torch.stack(zeta_feats, dim=0)     # stack features from all samples
 
-        # fuse: expand era5_summary to per-node
-        era5_feat = era5_summary.unsqueeze(1).expand(-1, zeta_summary.size(1), -1)  # one summary vector per sample
+        # fuse: broadcast global ERA5 summary to each node and concatenate with node-specific zeta features
+        era5_feat = era5_summary.unsqueeze(1).expand(-1, zeta_summary.size(1), -1)  # one summary vector per node per sample
         combined = torch.cat([era5_feat, zeta_summary], dim=2) # concat global context and node-specific zeta temporal features
         combined = self.dropout_fc(combined)
 
