@@ -25,10 +25,10 @@ class StormSurgeDataset(data.Dataset):
                  era5_mm, μ_e5, σ_e5,
                  cora_arr, μ_c, σ_c,
                  start_idx):
-        self.era5 = era5_mm     # mem-mapped numpy (720, 647, 57, 69)
+        self.era5 = era5_mm     # mem-mapped numpy, shape (time, channels, H, W)
         self.μ_e5 = μ_e5
         self.σ_e5 = σ_e5
-        self.cora = cora_arr    # ndarray in RAM   (720, nodes)
+        self.cora = cora_arr    # ndarray in RAM, shape (time, nodes)
         self.μ_c  = μ_c
         self.σ_c  = σ_c
         self.idxs = start_idx   # 1-D array of sequence start positions
@@ -86,7 +86,7 @@ num_era5_feats = era5_mm.shape[1]
 # initialize the model
 model = CNN_GNN_Hybrid(
     era5_channels     = era5_mm.shape[1],   # number of ERA5 channels per grid cell
-    cnn_hidden        = 4,                 # match your CNN channels
+    cnn_hidden        = 4,                 # number of filters in first CNN layer
     cnn_lstm_hidden   = 8,
     gcn_hidden        = 4,
     zeta_lstm_hidden  = 4,
@@ -100,7 +100,7 @@ print(f"Trainable parameters: {trainable_params:,}")
 
 # loss and optimizer
 criterion = nn.MSELoss() # measures average squared error between prediction and target
-optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-4) # adapts learning rates per parameter
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-4) # adam optimizer
 
 patience = 8
 lr_reduce_patience = 4
@@ -138,7 +138,7 @@ for epoch in range(epochs):
 
 
         optimizer.zero_grad()
-        # forward through your GCNHybrid model
+        # forward through your cnn gnn hybrid model
         y_pred = model(era5_seq, zeta_past, edge_index)  # [B, PRED_LEN, N]
         loss   = criterion(y_pred, y_true)
         loss.backward()
@@ -159,7 +159,7 @@ for epoch in range(epochs):
             zeta_past = torch.nan_to_num(zeta_past,nan=0.0).to(device)  # [B, T, N]
             y_true    = torch.nan_to_num(y_true,   nan=0.0).to(device)  # [B, PRED_LEN, N]
 
-            # Extract node‐level ERA5 features
+            # Unpack ERA5 input shape
             B, T, C, H, W = x_era5.shape
             era5_seq = x_era5
 
@@ -172,7 +172,7 @@ for epoch in range(epochs):
         val_losses.append(val_loss)
         print(f"Validation Loss: {val_loss:.4f}")
 
-    scheduler.step(val_loss) # adjust LR on plateu
+    scheduler.step(val_loss) # adjust LR on plateau
 
     # early stopping logic
     #if best_val - val_loss > min_delta:
