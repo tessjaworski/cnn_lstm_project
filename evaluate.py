@@ -8,23 +8,28 @@ from sklearn.metrics import r2_score
 
 from model import CNN_GNN_Hybrid
 from dataloader import load_dataset, CORA_PATHS, SEQ_LEN, PRED_LEN
-from cora_graph      import load_cora_coordinates, build_edge_index
+from cora_graph import load_cora_coordinates, build_edge_index
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# load preprocessed ERA5 and CORA, train/val/test split, and normalization
 era5_mm, cora_norm, tr_idx, va_idx, test_idx, mask_np, μ_cora, σ_cora = load_dataset()
 μ_cora = torch.from_numpy(μ_cora).float().to(device)
 σ_cora = torch.from_numpy(σ_cora).float().to(device)
 mask = torch.from_numpy(mask_np).to(device)
 
-coords     = load_cora_coordinates(CORA_PATHS[0], mask_np)
+# build graph structure
+# nodes are CORA locations and edges are k-nearest neighbors
+coords = load_cora_coordinates(CORA_PATHS[0], mask_np)
 edge_index = build_edge_index(coords, k=8).to(device)
 
-# persistence baseline (3-hour forecast)
+# persistence baseline
 y0 = cora_norm[test_idx]
 yN = cora_norm[test_idx + PRED_LEN]
 persist_mse = np.mean((yN - y0) ** 2)
 print(f"{PRED_LEN}-h persistence MSE (norm): {persist_mse:.4f}")
 
+# PyTorch Dataset for testing 
 class StormSurgeDataset(data.Dataset):
     def __init__(self, era5, cora, idxs):
         self.era5, self.cora, self.idxs = era5, cora, idxs
@@ -32,8 +37,10 @@ class StormSurgeDataset(data.Dataset):
         return len(self.idxs)
     def __getitem__(self, i):
         start = self.idxs[i]
+        # input is past SEQ_LEN hours of CORA and ERA5
         x5 = self.era5[start:start+SEQ_LEN]
         xz = self.cora[start:start+SEQ_LEN]
+        # target is next PRED_LEN hours of CORA
         y  = self.cora[start+SEQ_LEN:start+SEQ_LEN+PRED_LEN]
         return (
             torch.tensor(x5, dtype=torch.float32),
@@ -41,9 +48,11 @@ class StormSurgeDataset(data.Dataset):
             torch.tensor(y,  dtype=torch.float32),
         )
 
-test_ds     = StormSurgeDataset(era5_mm, cora_norm, test_idx)
+# wrap test data into dataloader
+test_ds = StormSurgeDataset(era5_mm, cora_norm, test_idx)
 test_loader = data.DataLoader(test_ds, batch_size=1, shuffle=False, num_workers=2)
 
+# load trained model
 num_era5_feats = era5_mm.shape[1]
 model = CNN_GNN_Hybrid(
     era5_channels    = era5_mm.shape[1],
@@ -57,28 +66,35 @@ model.load_state_dict(torch.load("gnn_model_24h_normalized.pth", map_location=de
 model.eval()
 
 criterion = nn.MSELoss()
+
+# evaluation loop
 mse_total = 0.0
 mae_total = 0.0
 all_pred, all_true = [], []
 
 with torch.no_grad():
     for x5, xz, y_true in test_loader:
+        # send inputs and target to device
         x5, xz, y_true = x5.to(device), xz.to(device), y_true.to(device)
         x5 = torch.nan_to_num(x5); xz = torch.nan_to_num(xz); y_true = torch.nan_to_num(y_true)
 
         B, T, C, H, W = x5.shape
         era5_seq = x5
 
+        # run model forward pass
         y_pred = model(era5_seq, xz, edge_index)
 
+        # unnormalize back to original zeta scale
         y_pred = y_pred * σ_cora + μ_cora
         y_true = y_true * σ_cora + μ_cora
 
+        # accumulate metrics
         mse_total += criterion(y_pred, y_true).item()
         mae_total += torch.mean(torch.abs(y_pred - y_true)).item()
         all_pred.append(y_pred.cpu().numpy())
         all_true.append(y_true.cpu().numpy())
-    all_pred = np.concatenate(all_pred, axis=0)  # shape: [total_samples, T, N]
+    # stack predictions and truths across all time samples
+    all_pred = np.concatenate(all_pred, axis=0)
     all_true = np.concatenate(all_true, axis=0)
 
 n = len(test_loader)
@@ -89,6 +105,7 @@ flat_pred = np.concatenate(all_pred)
 flat_true = np.concatenate(all_true)
 print("R² (norm):", r2_score(flat_true, flat_pred))
 
+# Scatter plot of predicted vs. true
 plt.figure(figsize=(6,6))
 plt.scatter(flat_true, flat_pred, s=1, alpha=0.3)
 lims = [flat_true.min(), flat_true.max()]
@@ -100,32 +117,31 @@ plt.tight_layout()
 plt.savefig("24hr_gnn_normalized_scatter_zeta_test.png", dpi=150)
 print("Saved 24hr_gnn_normalized_scatter_zeta_test.png")
 
-selected_frames = [5, 11, 23]  # show first 3 timesteps (adjust as needed)
+# Long time series plots for selected nodes
+selected_frames = [5, 11, 23]
 coords_np = coords.cpu().numpy() if torch.is_tensor(coords) else coords
 num_nodes = int(mask_np.sum())
 pred_array = np.concatenate(all_pred).reshape(-1, num_nodes)
 true_array = np.concatenate(all_true).reshape(-1, num_nodes)
 
-nodes_to_plot = [40, 160]
-coverage = 72
-sample_start = 50
+nodes_to_plot = [40, 160] # which nodes to visualize
+coverage = 72 # number of hours to cover
+sample_start = 50 # starting point for sliding windows
 horizon = PRED_LEN
 num_sliding = coverage - horizon + 1
 step = 1
 
 sample_idxs = list(range(sample_start, sample_start + num_sliding*step, step))
 
+# Plot 24 hr forecast curves in overlapping sliding windows
 for node_idx in nodes_to_plot:
     plt.figure(figsize=(10,4))
     for samp in sample_idxs:
-        # grab that window’s 24-h curve
         true_curve = all_true[samp, :horizon, node_idx]
         pred_curve = all_pred[samp, :horizon, node_idx]
 
-        # absolute time of each point in this segment
         times = samp + np.arange(horizon)
 
-        # plot with a bit of transparency
         plt.plot(times, true_curve,  label='True'    if samp==sample_start else None, color='C0', alpha=0.6)
         plt.plot(times, pred_curve,  label='Predicted'if samp==sample_start else None, color='C1', alpha=0.6)
 
