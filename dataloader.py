@@ -1,7 +1,7 @@
-# load preprocessed ERA5 and CORA numpy arrays
-# slide a window over time to build (x,y) training sequences
-# split into train, val, and test
-#return Pytorch dataset
+# load preprocessed ERA5 (stacked .npy file) and CORA (NetCDF) data
+# build a mask to keep only valid CORA nodes
+# split into train, val, and test by sliding windows over time indices
+# return raw arrays, normalization stats, and split indices
 
 import numpy as np
 import xarray as xr
@@ -25,7 +25,7 @@ def make_full_cora_mask():
         ds = xr.open_dataset(p)
         z = ds["zeta"].transpose("time","nodes").values
         masks.append(~np.any(np.isnan(z), axis=0))
-    # only keep nodes valid in *all* months
+    # only keep nodes valid in all months
     full_mask = np.logical_and.reduce(masks)
     np.save("zeta_full_mask.npy", full_mask)
     return full_mask
@@ -34,8 +34,8 @@ def make_full_cora_mask():
 
 class CORADataset(Dataset):
     def __init__(self, X, Y):
-        # X: numpy array [N_samples, T, num_nodes, num_feats]
-        # Y: numpy array [N_samples, num_nodes]
+        # X: training input sequences
+        # Y: training targets aligned with X
         self.X = torch.from_numpy(X).float()
         self.Y = torch.from_numpy(Y).float()
 
@@ -47,7 +47,7 @@ class CORADataset(Dataset):
     
 
 def load_era5():
-    return np.load(ERA5_PATH, mmap_mode="r")       # shape will be (1416, channels, H, W)
+    return np.load(ERA5_PATH, mmap_mode="r")       # shape will be (time, channels, H, W)
 
 def load_cora(full_mask):
     arrays = []
@@ -62,8 +62,8 @@ def load_cora(full_mask):
 
 # create sequences
 def make_indices(T: int):
-    last_valid_start = T - SEQ_LEN - PRED_LEN      # inclusive
-    idx_all = np.arange(last_valid_start + 1)      # e.g. 0 … 709
+    last_valid_start = T - SEQ_LEN - PRED_LEN
+    idx_all = np.arange(last_valid_start + 1)
 
     n_train = int(TRAIN_FR * len(idx_all))
     n_val   = int(VAL_FR   * len(idx_all))
@@ -81,7 +81,7 @@ def load_dataset():
     era5_mm = load_era5()
     cora    = load_cora(full_mask)
 
-    # align by trimming ERA-5 to CORA’s 30-day span (720 h)
+    # align by trimming ERA-5 to CORA (necessary for some months)
     L = len(cora) 
     era5_mm = era5_mm[:L]       
 
@@ -93,7 +93,7 @@ def load_dataset():
     μ_era5   = e5_train.mean(axis=(0,2,3), keepdims=True)
     σ_era5   = e5_train.std (axis=(0,2,3), keepdims=True)
 
-    c_train  = cora[train_idx]             # shape: (n_train, N)
+    c_train  = cora[train_idx]
     μ_cora   = c_train.mean(axis=0, keepdims=True)
     σ_cora   = c_train.std (axis=0, keepdims=True)
 
